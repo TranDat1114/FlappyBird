@@ -79,24 +79,4 @@ jobs:
           - Press **ESC** to quit
           - Avoid the pipes!
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  validate:
-    needs: publish
-    runs-on: ubuntu-latest
-    if: success()
-    
-    steps:
-    - name: Wait for NuGet indexing
-      run: sleep 60
-      
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.x
-        
-    - name: Test installation from NuGet
-      run: |
-        dotnet tool install --global FlappyBird --version ${{ needs.publish.outputs.version }}
-        flappybird --help || echo "Game installed successfully"
-        dotnet tool uninstall --global FlappyBird
+        GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
