@@ -330,7 +330,7 @@ namespace FlappyBird.Game
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                        FLAPPY    BIRD                          ║");
+            Console.WriteLine("║                       FLAPPY     BIRD                          ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
         }

@@ -20,7 +20,7 @@ namespace FlappyBird.Game.Modes
         // === GAME OVER MENU STATE ===
         private bool showGameOverMenu = false;
         private int gameOverSelectedIndex = 0; // 0: Chơi lại, 1: Thoát
-        private readonly string[] gameOverOptions = { "Choi lai", "Ve menu chinh" };
+        private readonly string[] gameOverOptions = ["Choi lai", "Ve menu chinh"];
         private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
 
         public override void Initialize()

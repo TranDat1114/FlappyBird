@@ -16,53 +16,53 @@ namespace FlappyBird.Game.Modes
         private int currentRound = 1;
         private int ai1Wins = 0;
         private int ai2Wins = 0;
-        
+
         public override void Initialize()
         {
             ResetRound();
         }
-        
+
         private void ResetRound()
         {
             ai1State.Reset();
             ai2State.Reset();
-            
+
             // Both use God mode but different strategies
             ai1State.GodMode = true;
             ai2State.GodMode = true;
-            
+
             // Initialize pipes
             var pipe1 = new Pipe(GameState.GameWidth - 1, GameState.BaseGapSize, GameState.GameHeight, Random);
             var pipe2 = new Pipe(GameState.GameWidth - 1, GameState.BaseGapSize, GameState.GameHeight, Random);
-            
+
             ai1State.Pipes.Add(pipe1);
             ai2State.Pipes.Add(pipe2);
-            
+
             gameStarted = false;
         }
-        
+
         public override void Update()
         {
             if (!gameStarted) return;
-            
+
             // Update both AIs
             UpdateAI(ai1State, "Conservative");
             UpdateAI(ai2State, "Aggressive");
-            
+
             // Check if round is complete
             if (ai1State.GameOver && ai2State.GameOver)
             {
                 CompleteRound();
             }
         }
-        
+
         private void UpdateAI(GameState aiState, string strategy)
         {
             if (aiState.GameOver) return;
-            
+
             aiState.FrameCounter++;
             aiState.UpdateDifficulty();
-            
+
             // Different AI strategies
             if (strategy == "Conservative")
             {
@@ -73,12 +73,12 @@ namespace FlappyBird.Game.Modes
                 // More aggressive AI - jump more frequently
                 GodModeAI.AutoControlBirdAggressive(aiState);
             }
-            
+
             UpdateBirdPhysics(aiState);
             UpdatePipes(aiState);
             CheckCollision(aiState);
         }
-        
+
         private void CompleteRound()
         {
             // Determine winner
@@ -90,9 +90,9 @@ namespace FlappyBird.Game.Modes
             {
                 ai2Wins++;
             }
-            
+
             currentRound++;
-            
+
             if (currentRound <= testRounds)
             {
                 // Start next round
@@ -103,35 +103,35 @@ namespace FlappyBird.Game.Modes
                 ai2State.GameStarted = true;
             }
         }
-        
+
         public override void Render()
         {
             Console.Clear();
-            
+
             // Render comparison
             RenderAIComparison();
-            
+
             // Render statistics
             RenderStatistics();
         }
-        
+
         private void RenderAIComparison()
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
             Console.WriteLine("║                        AI COMPARISON                           ║");
             Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
-            Console.WriteLine($"║  Round {currentRound}/{testRounds} - Conservative AI vs Aggressive AI           ║");
+            Console.WriteLine($"║  Round {currentRound}/{testRounds} - Conservative AI vs Aggressive AI                 ║");
             Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
-            
+
             // AI stats
-            Console.WriteLine($"║  Conservative AI: {ai1State.Score,3} điểm | Status: {(ai1State.GameOver ? "THUA" : "CHƠI"),4} ║");
-            Console.WriteLine($"║  Aggressive AI  : {ai2State.Score,3} điểm | Status: {(ai2State.GameOver ? "THUA" : "CHƠI"),4} ║");
+            Console.WriteLine($"║  Conservative AI: {ai1State.Score,3} điểm | Status: {(ai1State.GameOver ? "THUA" : "CHƠI"),4}                      ║");
+            Console.WriteLine($"║  Aggressive AI  : {ai2State.Score,3} điểm | Status: {(ai2State.GameOver ? "THUA" : "CHƠI"),4}                      ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
-            
+
             Console.ResetColor();
         }
-        
+
         private void RenderStatistics()
         {
             Console.WriteLine();
@@ -140,12 +140,12 @@ namespace FlappyBird.Game.Modes
             Console.WriteLine($"   Conservative AI Wins: {ai1Wins}");
             Console.WriteLine($"   Aggressive AI Wins  : {ai2Wins}");
             Console.WriteLine($"   Ties               : {currentRound - 1 - ai1Wins - ai2Wins}");
-            
+
             if (currentRound > testRounds)
             {
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
-                string finalWinner = ai1Wins > ai2Wins ? "Conservative AI" : 
+                string finalWinner = ai1Wins > ai2Wins ? "Conservative AI" :
                                    ai2Wins > ai1Wins ? "Aggressive AI" : "TIE";
                 Console.WriteLine($"*** WINNER: {finalWinner} ***");
                 Console.WriteLine("R: Run Again | ESC: Menu");
@@ -155,10 +155,10 @@ namespace FlappyBird.Game.Modes
                 Console.WriteLine();
                 Console.WriteLine("SPACE: Start Test | ESC: Menu");
             }
-            
+
             Console.ResetColor();
         }
-        
+
         public override void HandleInput(ConsoleKeyInfo keyInfo)
         {
             switch (keyInfo.Key)
@@ -171,7 +171,7 @@ namespace FlappyBird.Game.Modes
                         ai2State.GameStarted = true;
                     }
                     break;
-                    
+
                 case ConsoleKey.R:
                     if (currentRound > testRounds)
                     {
@@ -182,13 +182,13 @@ namespace FlappyBird.Game.Modes
                         Initialize();
                     }
                     break;
-                    
+
                 case ConsoleKey.Escape:
                     shouldExit = true;
                     break;
             }
         }
-        
+
         public override bool IsGameOver()
         {
             return shouldExit;
