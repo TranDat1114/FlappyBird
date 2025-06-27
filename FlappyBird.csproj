@@ -5,6 +5,39 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>FlappyBird</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>TranDat1114</Authors>
+    <Description>A smooth 60 FPS Flappy Bird game for console</Description>
+    <Copyright>Copyright © 2025 YourName</Copyright>
+    <PackageTags>game;console;flappybird;retro</PackageTags>
+    <RepositoryUrl>https://github.com/TranDat1114/FlappyBird</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/TranDat1114/FlappyBird</PackageProjectUrl>
+    
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>
+      v1.0.0:
+      - Initial release
+      - 60 FPS smooth gameplay
+      - Realistic physics with gravity
+      - Progressive difficulty system
+      - Cross-platform support
+    </PackageReleaseNotes>
+
+    <!-- Global Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>flappybird</ToolCommandName>
+
+    <!-- Icon and README -->
+    <PackageIcon>bird.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="bird.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
