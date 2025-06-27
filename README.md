@@ -6,7 +6,7 @@ A smooth **60 FPS** Flappy Bird game for console with realistic physics!
 
 ```bash
 # Install globally
-dotnet tool install --global FlappyBirdConsole
+dotnet tool install --global FlappyBird
 
 # Play anywhere!
 flappybird
@@ -42,10 +42,10 @@ flappybird
 
 ```bash
 # Update to latest version
-dotnet tool update --global FlappyBirdConsole
+dotnet tool update --global FlappyBird
 
 # Uninstall
-dotnet tool uninstall --global FlappyBirdConsole
+dotnet tool uninstall --global FlappyBird
 
 # Check version
 flappybird --version

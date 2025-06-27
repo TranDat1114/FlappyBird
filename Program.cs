@@ -4,32 +4,49 @@ using System.Threading;
 
 class FlappyBirdGame
 {
+    // === TỔNG HỢP CÁC THÔNG SỐ TRẢI NGHIỆM NGƯỜI CHƠI - ĐƯỢC TÍNH TOÁN ĐỒNG BỘ ===
     private static int gameWidth = 80;
     private static int gameHeight = 20;
     private static int birdX = 10;
-    private static int birdY = 5; // Bắt đầu ở cao hơn (thay vì gameHeight / 2)
+    private static int birdY = 8; // Vị trí khởi đầu ở giữa màn hình (20/2 - 2)
     private static int score = 0;
     private static bool gameOver = false;
-    private static bool gameStarted = false; // Thêm trạng thái game chưa bắt đầu
+    private static bool gameStarted = false;
     private static Random random = new Random();
     
-    private static List<Pipe> pipes = new List<Pipe>();
-    private static int pipeSpacing = 20;
-    private static int lastPipeX = gameWidth;
-    
-    // Thêm biến cho vật lý mượt mà hơn
+    // === VẬT LÝ CHIM - CÂN BẰNG CHO KHUNG NHỎ 20x80 ===
     private static float birdVelocity = 0f;
-    private static float gravity = 0.15f; // Giảm gravity cho 60 FPS
-    private static float jumpStrength = -1.2f; // Điều chỉnh lực nhảy cho 60 FPS
+    private static float gravity = 0.06f; // Cân bằng: đủ nhanh để cảm thấy tự nhiên, đủ chậm để kiểm soát
+    private static float jumpStrength = -0.8f; // Giảm xuống: vừa đủ để vượt gap mà không bay quá cao
+    private static float maxFallSpeed = 1.0f; // Cân bằng: nhanh nhưng vẫn kiểm soát được
     private static int frameCounter = 0;
     
-    // Thêm biến cho hệ thống tăng độ khó
-    private static int difficultyLevel = 1;
-    private static int pipeSpeed = 2; // Tốc độ ban đầu rất nhanh (frame delay)
+    // === PIPE VÀ DIFFICULTY - PROGRESSION HỢP LÝ ===
+    private static List<Pipe> pipes = new List<Pipe>();
+    private static int pipeSpacing = 25; // Tối ưu cho rhythm: không quá xa, không quá gần
+    private static int lastPipeX = gameWidth;
+    private static int difficultyLevel = 1; // Bắt đầu từ level 1 thay vì 4
+    private static int pipeSpeed = 4; // Chậm hơn ban đầu để học
+    
+    // === GAP SIZE ĐỘNG - TĂNG DẦN THEO SKILL ===
+    private static int baseGapSize = 9; // Gap lớn ban đầu cho người mới
+    private static int minGapSize = 6; // Gap tối thiểu vẫn chơi được
+    
+    // === ANIMATION & EFFECTS ===
+    private static int birdAnimationFrame = 0;
+    
+    // Tối ưu cho addictive gameplay
+    private static float difficultyGrowthRate = 0.008f; // Tăng độ khó từ từ để tạo addiction        // Thêm biến cho hệ thống tăng độ khó tối ưu
     
     // Thêm biến cho double buffering để tránh nhấp nháy
     private static char[,] currentScreen = new char[gameHeight, gameWidth];
     private static char[,] previousScreen = new char[gameHeight, gameWidth];
+    
+    // Tối ưu hiệu suất rendering
+    private static bool forceFullRedraw = false;
+    private static int lastScore = 0;
+    private static int lastDifficultyLevel = 0;
+    private static bool lastGameStarted = false;
     
     // ASCII Art Characters for better UI design
     private static char birdChar = '♦';           // Diamond bird character
@@ -41,7 +58,6 @@ class FlappyBirdGame
     private static char borderCornerBL = '╚';    // Bottom-left corner
     private static char borderCornerBR = '╝';    // Bottom-right corner
     private static char backgroundChar = '·';    // Light dot for background pattern
-    private static int birdAnimationFrame = 0;   // For bird animation
     
     private class Pipe
     {
@@ -50,11 +66,17 @@ class FlappyBirdGame
         public int BottomHeight { get; set; }
         public int GapSize { get; set; }
         
-        public Pipe(int x, int gapSize = 8)
+        public Pipe(int x, int gapSize = 9) // Sử dụng baseGapSize mặc định
         {
             X = x;
-            GapSize = gapSize; // Cho phép thay đổi kích thước gap
-            TopHeight = random.Next(2, gameHeight - GapSize - 2);
+            GapSize = gapSize;
+            
+            // Tối ưu vị trí ống cho khung 20 height - tạo trải nghiệm cân bằng
+            // Đảm bảo gap luôn ở vùng có thể chơi được (tránh quá gần viền)
+            int minTopHeight = Math.Max(3, gameHeight / 5); // Ít nhất 3 pixel từ viền trên
+            int maxTopHeight = Math.Min(gameHeight - GapSize - 4, (gameHeight * 3) / 4); // Ít nhất 4 pixel từ viền dưới
+            
+            TopHeight = random.Next(minTopHeight, maxTopHeight);
             BottomHeight = gameHeight - TopHeight - GapSize;
         }
     }
@@ -84,13 +106,14 @@ class FlappyBirdGame
             // Reset game state trước khi bắt đầu
             gameOver = false;
             gameStarted = false;
+            forceFullRedraw = true; // Buộc vẽ lại toàn bộ màn hình
             
             // Khởi tạo màn hình trống để tránh nhấp nháy ban đầu
             InitializeScreen();
             
-            // Tạo ống đầu tiên
+            // Tạo ống đầu tiên với gap size lớn nhất để khuyến khích người chơi mới
             pipes.Clear();
-            pipes.Add(new Pipe(gameWidth - 1, 8));
+            pipes.Add(new Pipe(gameWidth - 1, baseGapSize)); // Gap 9 cho level 1
             
             Thread gameThread = new Thread(GameLoop);
             gameThread.Start();
@@ -148,11 +171,24 @@ class FlappyBirdGame
     
     static void GameLoop()
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        long lastFrameTime = 0;
+        const long targetFrameTime = 16; // 60 FPS = ~16.67ms per frame
+        
         while (!gameOver)
         {
-            Update();
-            Draw();
-            Thread.Sleep(16); // 60 FPS (1000ms / 60 ≈ 16ms)
+            long currentTime = stopwatch.ElapsedMilliseconds;
+            
+            // Chỉ update nếu đủ thời gian đã trôi qua
+            if (currentTime - lastFrameTime >= targetFrameTime)
+            {
+                Update();
+                Draw();
+                lastFrameTime = currentTime;
+            }
+            
+            // Sleep ngắn để không làm CPU quá tải
+            Thread.Sleep(1);
         }
         
         // Vẽ frame cuối cùng khi game over
@@ -174,6 +210,13 @@ class FlappyBirdGame
         
         // Vật lý chim với gravity và velocity mượt mà hơn
         birdVelocity += gravity;
+        
+        // Giới hạn tốc độ rơi tối đa để tránh rơi quá nhanh
+        if (birdVelocity > maxFallSpeed)
+        {
+            birdVelocity = maxFallSpeed;
+        }
+        
         birdY += (int)Math.Round(birdVelocity);
         
         // Giới hạn vị trí chim
@@ -203,10 +246,17 @@ class FlappyBirdGame
                 }
             }
             
-            // Tạo ống mới với gap size phụ thuộc vào độ khó
+            // Tạo ống mới với gap size động và spacing được tối ưu
             if (pipes.Count == 0 || pipes[pipes.Count - 1].X < gameWidth - pipeSpacing)
             {
-                int currentGapSize = Math.Max(6, 9 - difficultyLevel); // Gap giảm theo level
+                // === HỆ THỐNG GAP SIZE ĐỘNG - GIẢM DẦN THEO SKILL ===
+                // Level 1-3: Gap 9 (học cách chơi)
+                // Level 4-6: Gap 8 (trung bình) 
+                // Level 7-9: Gap 7 (khó)
+                // Level 10+: Gap 6 (chuyên nghiệp)
+                int currentGapSize = baseGapSize - (difficultyLevel / 3);
+                currentGapSize = Math.Max(minGapSize, currentGapSize);
+                
                 pipes.Add(new Pipe(gameWidth - 1, currentGapSize));
             }
         }
@@ -217,42 +267,60 @@ class FlappyBirdGame
     
     static void UpdateDifficulty()
     {
-        // Tăng độ khó mỗi 5 điểm
+        // === HỆ THỐNG TĂNG ĐỘ KHÓ ĐƯỢC THIẾT KẾ CHO TRẢI NGHIỆM TỐI ƯU ===
+        // Tăng level mỗi 5 điểm để có thời gian thích nghi
         int newDifficultyLevel = (score / 5) + 1;
         
         if (newDifficultyLevel != difficultyLevel)
         {
             difficultyLevel = newDifficultyLevel;
             
-            // Giữ tốc độ tối đa (pipeSpeed = 2) từ đầu
-            pipeSpeed = 2; // Luôn giữ tốc độ tối đa
+            // === PIPE SPEED - TĂNG DẦN NHƯNG KHÔNG QUÁ NHANH ===
+            // Level 1-2: 4 frame/move (chậm - học cách chơi)
+            // Level 3-4: 3 frame/move (trung bình)
+            // Level 5-6: 2 frame/move (nhanh)
+            // Level 7+: 1 frame/move (tối đa)
+            if (difficultyLevel <= 2) pipeSpeed = 4;
+            else if (difficultyLevel <= 4) pipeSpeed = 3;
+            else if (difficultyLevel <= 6) pipeSpeed = 2;
+            else pipeSpeed = 1;
             
-            // Tăng gravity nhẹ theo level để tăng độ khó
-            gravity = 0.15f + (difficultyLevel - 1) * 0.03f; // Tăng gravity nhiều hơn
+            // GHI CHÚ: Vật lý chim (gravity, jumpStrength, maxFallSpeed) KHÔNG thay đổi
+            // Chỉ pipe speed và gap size thay đổi để tạo trải nghiệm cân bằng
         }
     }
     
     static void ResetGame()
     {
-        // Reset tất cả biến về trạng thái ban đầu
-        birdY = 5;
-        score = 0;
-        gameOver = false; // Quan trọng: reset gameOver
-        gameStarted = false;
+        // === RESET TẤT CẢ THÔNG SỐ VỀ TRẠNG THÁI TỐI ƯU ===
+        birdY = 8; // Vị trí giữa màn hình
         birdVelocity = 0f;
-        gravity = 0.15f;
+        score = 0;
+        gameOver = false;
+        gameStarted = false;
         frameCounter = 0;
+        
+        // === CỐ ĐỊNH VẬT LÝ CHIM - KHÔNG THAY ĐỔI THEO LEVEL ===
+        gravity = 0.06f;
+        jumpStrength = -0.8f; // Vừa đủ để vượt gap 9 mà không bay quá cao cho khung 20
+        maxFallSpeed = 1.0f;
+        
+        // === RESET DIFFICULTY VỀ LEVEL 1 ===
         difficultyLevel = 1;
-        pipeSpeed = 2;
+        pipeSpeed = 4; // Chậm nhất để bắt đầu
         birdAnimationFrame = 0;
         
-        // Xóa tất cả ống
+        // Reset tracking variables cho rendering tối ưu
+        lastScore = 0;
+        lastDifficultyLevel = 0;
+        lastGameStarted = false;
+        forceFullRedraw = true;
+        
+        // === TẠO PIPE ĐẦU TIÊN VỚI GAP LỚN NHẤT ===
         pipes.Clear();
+        pipes.Add(new Pipe(gameWidth - 1, baseGapSize)); // Gap 9 cho người mới
         
-        // Tạo ống đầu tiên
-        pipes.Add(new Pipe(gameWidth - 1, 8));
-        
-        // Reset màn hình buffer để tránh hiển thị lỗi
+        // Reset màn hình buffer
         for (int y = 0; y < gameHeight; y++)
         {
             for (int x = 0; x < gameWidth; x++)
@@ -261,7 +329,6 @@ class FlappyBirdGame
             }
         }
         
-        // Xóa màn hình
         Console.Clear();
     }
     
@@ -284,12 +351,13 @@ class FlappyBirdGame
     {
         foreach (var pipe in pipes)
         {
-            // Kiểm tra va chạm với ống (ống giờ rộng hơn)
-            if (birdX >= pipe.X - 2 && birdX <= pipe.X + 2)
+            // Collision detection với một chút "forgiveness" để trải nghiệm tốt hơn
+            // Giảm hitbox một chút để người chơi cảm thấy "may mắn" khi vượt qua
+            if (birdX >= pipe.X - 1 && birdX <= pipe.X + 1) // Giảm từ 2 xuống 1
             {
                 if (birdY <= pipe.TopHeight || birdY >= gameHeight - pipe.BottomHeight - 1)
                 {
-                    gameOver = true;
+                    gameOver = true; // Bật lại collision detection
                     return;
                 }
             }
@@ -397,16 +465,16 @@ class FlappyBirdGame
             }
         }
         
-        // Vẽ chim với animation
+        // Vẽ chim với animation responsive hơn
         if (birdX >= 1 && birdX < gameWidth - 1 && birdY >= 1 && birdY < gameHeight - 1)
         {
-            // Animation cho chim dựa trên velocity
+            // === ANIMATION CHIM RESPONSIVE VỚI VẬT LÝ MỚI ===
             char currentBirdChar;
-            if (birdVelocity < -0.5f)
+            if (birdVelocity < -0.12f) // Điều chỉnh để phù hợp với jumpStrength -0.8f
             {
                 currentBirdChar = '^';  // Bay lên
             }
-            else if (birdVelocity > 0.5f)
+            else if (birdVelocity > 0.12f) // Giữ nguyên để phù hợp với gravity 0.06f
             {
                 currentBirdChar = 'v';  // Rơi xuống
             }
@@ -417,9 +485,9 @@ class FlappyBirdGame
             
             screen[birdY, birdX] = currentBirdChar;
             
-            // Thêm hiệu ứng cánh chim
-            birdAnimationFrame = (birdAnimationFrame + 1) % 6;
-            if (birdAnimationFrame < 3)
+            // Thêm hiệu ứng cánh chim nhanh hơn
+            birdAnimationFrame = (birdAnimationFrame + 1) % 4; // Giảm từ 6 xuống 4 để nhanh hơn
+            if (birdAnimationFrame < 2) // Giảm từ 3 xuống 2
             {
                 // Cánh lên
                 if (birdX - 1 >= 1) screen[birdY, birdX - 1] = '~';
@@ -434,6 +502,22 @@ class FlappyBirdGame
         // Chỉ cập nhật những ô thay đổi để tránh nhấp nháy
         RenderOptimized(screen);
         
+        // Chỉ cập nhật UI text khi có thay đổi để giảm flickering
+        bool uiChanged = (score != lastScore) || (difficultyLevel != lastDifficultyLevel) || 
+                        (gameStarted != lastGameStarted) || forceFullRedraw;
+                        
+        if (uiChanged)
+        {
+            RenderUI();
+            lastScore = score;
+            lastDifficultyLevel = difficultyLevel;
+            lastGameStarted = gameStarted;
+            forceFullRedraw = false;
+        }
+    }
+    
+    static void RenderUI()
+    {
         // Hiển thị thông tin ở dưới màn hình game với thiết kế đẹp hơn
         Console.SetCursorPosition(0, gameHeight);
         if (!gameStarted)
@@ -446,7 +530,7 @@ class FlappyBirdGame
         }
         else
         {
-            string statusMsg = $"Điểm: {score} | Level: {difficultyLevel} | Tốc độ: MAX";
+            string statusMsg = $"Điểm: {score} | Level: {difficultyLevel}";
             Console.Write(statusMsg.PadRight(gameWidth));
             Console.SetCursorPosition(0, gameHeight + 1);
             string controlMsg = "SPACE: Bay lên | ESC: Thoát";
@@ -456,17 +540,39 @@ class FlappyBirdGame
     
     static void RenderOptimized(char[,] newScreen)
     {
-        // Chỉ cập nhật những ô pixel thay đổi
+        // Batch các thay đổi để giảm số lần gọi SetCursorPosition
+        var changes = new List<(int x, int y, char ch)>();
+        
+        // Thu thập tất cả các thay đổi
         for (int y = 0; y < gameHeight; y++)
         {
             for (int x = 0; x < gameWidth; x++)
             {
                 if (newScreen[y, x] != previousScreen[y, x])
                 {
-                    Console.SetCursorPosition(x, y);
-                    Console.Write(newScreen[y, x]);
+                    changes.Add((x, y, newScreen[y, x]));
                     previousScreen[y, x] = newScreen[y, x];
                 }
+            }
+        }
+        
+        // Áp dụng các thay đổi theo batch để tối ưu performance
+        if (changes.Count > 0)
+        {
+            // Sắp xếp theo y rồi x để tối ưu cursor movement
+            changes.Sort((a, b) => a.y != b.y ? a.y.CompareTo(b.y) : a.x.CompareTo(b.x));
+            
+            int currentX = -1, currentY = -1;
+            foreach (var (x, y, ch) in changes)
+            {
+                // Chỉ di chuyển cursor khi cần thiết
+                if (x != currentX + 1 || y != currentY)
+                {
+                    Console.SetCursorPosition(x, y);
+                }
+                Console.Write(ch);
+                currentX = x;
+                currentY = y;
             }
         }
     }
