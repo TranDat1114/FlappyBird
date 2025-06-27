@@ -31,6 +31,18 @@ class FlappyBirdGame
     private static char[,] currentScreen = new char[gameHeight, gameWidth];
     private static char[,] previousScreen = new char[gameHeight, gameWidth];
     
+    // ASCII Art Characters for better UI design
+    private static char birdChar = '♦';           // Diamond bird character
+    private static char pipeChar = '█';          // Solid block for pipes
+    private static char borderHorizontal = '═';  // Double horizontal line
+    private static char borderVertical = '║';    // Double vertical line
+    private static char borderCornerTL = '╔';    // Top-left corner
+    private static char borderCornerTR = '╗';    // Top-right corner
+    private static char borderCornerBL = '╚';    // Bottom-left corner
+    private static char borderCornerBR = '╝';    // Bottom-right corner
+    private static char backgroundChar = '·';    // Light dot for background pattern
+    private static int birdAnimationFrame = 0;   // For bird animation
+    
     private class Pipe
     {
         public int X { get; set; }
@@ -65,38 +77,73 @@ class FlappyBirdGame
             }
         }
         
-        // Khởi tạo màn hình trống để tránh nhấp nháy ban đầu
-        InitializeScreen();
-        
-        // Tạo ống đầu tiên
-        pipes.Add(new Pipe(gameWidth - 1, 8));
-        
-        Thread gameThread = new Thread(GameLoop);
-        gameThread.Start();
-        
-        // Xử lý đầu vào
-        while (!gameOver)
+        // Vòng lặp chính để cho phép restart game
+        bool exitProgram = false;
+        while (!exitProgram)
         {
-            ConsoleKeyInfo keyInfo = Console.ReadKey(true);
-            if (keyInfo.Key == ConsoleKey.Spacebar)
+            // Reset game state trước khi bắt đầu
+            gameOver = false;
+            gameStarted = false;
+            
+            // Khởi tạo màn hình trống để tránh nhấp nháy ban đầu
+            InitializeScreen();
+            
+            // Tạo ống đầu tiên
+            pipes.Clear();
+            pipes.Add(new Pipe(gameWidth - 1, 8));
+            
+            Thread gameThread = new Thread(GameLoop);
+            gameThread.Start();
+            
+            // Xử lý đầu vào
+            while (!gameOver)
             {
-                if (!gameStarted)
+                ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                if (keyInfo.Key == ConsoleKey.Spacebar)
                 {
-                    gameStarted = true; // Bắt đầu game khi nhấn space đầu tiên
+                    if (!gameStarted)
+                    {
+                        gameStarted = true; // Bắt đầu game khi nhấn space đầu tiên
+                    }
+                    birdVelocity = jumpStrength; // Sử dụng velocity thay vì thay đổi trực tiếp position
                 }
-                birdVelocity = jumpStrength; // Sử dụng velocity thay vì thay đổi trực tiếp position
+                else if (keyInfo.Key == ConsoleKey.Escape)
+                {
+                    gameOver = true;
+                    exitProgram = true; // Thoát hoàn toàn
+                }
+                // Loại bỏ xử lý phím R trong lúc chơi - chỉ cho phép khi game over
             }
-            else if (keyInfo.Key == ConsoleKey.Escape)
+            
+            gameThread.Join();
+            
+            // Nếu game over và không phải do ESC, cho phép restart
+            if (!exitProgram)
             {
-                gameOver = true;
+                Console.SetCursorPosition(0, gameHeight + 2);
+                Console.WriteLine($"GAME OVER! Điểm số cuối cùng: {score}");
+                Console.WriteLine("R: Chơi lại | ESC: Thoát");
+                
+                // Đợi input sau game over
+                while (true)
+                {
+                    ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                    if (keyInfo.Key == ConsoleKey.R)
+                    {
+                        ResetGame();
+                        break; // Restart game
+                    }
+                    else if (keyInfo.Key == ConsoleKey.Escape)
+                    {
+                        exitProgram = true;
+                        break; // Thoát
+                    }
+                }
             }
         }
         
-        gameThread.Join();
-        Console.SetCursorPosition(0, gameHeight + 2);
-        Console.WriteLine($"Trò chơi kết thúc! Điểm số: {score}");
-        Console.WriteLine("Nhấn phím bất kỳ để thoát...");
-        Console.ReadKey();
+        Console.SetCursorPosition(0, gameHeight + 3);
+        Console.WriteLine("Cảm ơn bạn đã chơi!");
     }
     
     static void GameLoop()
@@ -107,6 +154,9 @@ class FlappyBirdGame
             Draw();
             Thread.Sleep(16); // 60 FPS (1000ms / 60 ≈ 16ms)
         }
+        
+        // Vẽ frame cuối cùng khi game over
+        Draw();
     }
     
     static void Update()
@@ -182,6 +232,39 @@ class FlappyBirdGame
         }
     }
     
+    static void ResetGame()
+    {
+        // Reset tất cả biến về trạng thái ban đầu
+        birdY = 5;
+        score = 0;
+        gameOver = false; // Quan trọng: reset gameOver
+        gameStarted = false;
+        birdVelocity = 0f;
+        gravity = 0.15f;
+        frameCounter = 0;
+        difficultyLevel = 1;
+        pipeSpeed = 2;
+        birdAnimationFrame = 0;
+        
+        // Xóa tất cả ống
+        pipes.Clear();
+        
+        // Tạo ống đầu tiên
+        pipes.Add(new Pipe(gameWidth - 1, 8));
+        
+        // Reset màn hình buffer để tránh hiển thị lỗi
+        for (int y = 0; y < gameHeight; y++)
+        {
+            for (int x = 0; x < gameWidth; x++)
+            {
+                previousScreen[y, x] = ' ';
+            }
+        }
+        
+        // Xóa màn hình
+        Console.Clear();
+    }
+    
     static void InitializeScreen()
     {
         // Khởi tạo màn hình trống
@@ -201,10 +284,10 @@ class FlappyBirdGame
     {
         foreach (var pipe in pipes)
         {
-            // Kiểm tra va chạm với ống
-            if (birdX >= pipe.X - 1 && birdX <= pipe.X + 1)
+            // Kiểm tra va chạm với ống (ống giờ rộng hơn)
+            if (birdX >= pipe.X - 2 && birdX <= pipe.X + 2)
             {
-                if (birdY <= pipe.TopHeight || birdY >= gameHeight - pipe.BottomHeight)
+                if (birdY <= pipe.TopHeight || birdY >= gameHeight - pipe.BottomHeight - 1)
                 {
                     gameOver = true;
                     return;
@@ -218,72 +301,156 @@ class FlappyBirdGame
         // Vẽ vào buffer thay vì trực tiếp ra console
         char[,] screen = new char[gameHeight, gameWidth];
         
-        // Khởi tạo nền trống
+        // Khởi tạo nền với pattern nhẹ
         for (int y = 0; y < gameHeight; y++)
         {
             for (int x = 0; x < gameWidth; x++)
             {
-                screen[y, x] = ' ';
+                // Tạo pattern nền với dots nhẹ
+                if ((x + y) % 8 == 0 && y > 0 && y < gameHeight - 1 && x > 0 && x < gameWidth - 1)
+                    screen[y, x] = backgroundChar;
+                else
+                    screen[y, x] = ' ';
             }
         }
         
-        // Vẽ biên trên và dưới
-        for (int x = 0; x < gameWidth; x++)
+        // Vẽ viền game với ASCII box drawing characters
+        // Viền trên
+        for (int x = 1; x < gameWidth - 1; x++)
         {
-            screen[0, x] = '#';
-            screen[gameHeight - 1, x] = '#';
+            screen[0, x] = borderHorizontal;
         }
-        
-        // Vẽ biên trái và phải
-        for (int y = 0; y < gameHeight; y++)
+        // Viền dưới
+        for (int x = 1; x < gameWidth - 1; x++)
         {
-            screen[y, 0] = '#';
-            screen[y, gameWidth - 1] = '#';
+            screen[gameHeight - 1, x] = borderHorizontal;
         }
+        // Viền trái và phải
+        for (int y = 1; y < gameHeight - 1; y++)
+        {
+            screen[y, 0] = borderVertical;
+            screen[y, gameWidth - 1] = borderVertical;
+        }
+        // Góc viền
+        screen[0, 0] = borderCornerTL;
+        screen[0, gameWidth - 1] = borderCornerTR;
+        screen[gameHeight - 1, 0] = borderCornerBL;
+        screen[gameHeight - 1, gameWidth - 1] = borderCornerBR;
         
-        // Vẽ ống
+        // Vẽ ống với thiết kế đẹp hơn
         foreach (var pipe in pipes)
         {
-            if (pipe.X >= 0 && pipe.X < gameWidth)
+            if (pipe.X >= 1 && pipe.X < gameWidth - 1)
             {
-                // Ống trên
+                // Ống trên - vẽ với độ dày 3 pixel
                 for (int y = 1; y <= pipe.TopHeight; y++)
                 {
-                    if (pipe.X >= 0 && pipe.X < gameWidth && y >= 0 && y < gameHeight)
-                        screen[y, pipe.X] = '|';
+                    if (y >= 1 && y < gameHeight - 1)
+                    {
+                        // Vẽ ống chính
+                        screen[y, pipe.X] = pipeChar;
+                        
+                        // Vẽ viền ống nếu có chỗ
+                        if (pipe.X - 1 >= 1)
+                            screen[y, pipe.X - 1] = pipeChar;
+                        if (pipe.X + 1 < gameWidth - 1)
+                            screen[y, pipe.X + 1] = pipeChar;
+                    }
                 }
                 
-                // Ống dưới
+                // Vẽ mũ ống trên (cap)
+                if (pipe.TopHeight + 1 < gameHeight - 1 && pipe.TopHeight >= 1)
+                {
+                    for (int capX = pipe.X - 2; capX <= pipe.X + 2; capX++)
+                    {
+                        if (capX >= 1 && capX < gameWidth - 1)
+                            screen[pipe.TopHeight, capX] = '▀';
+                    }
+                }
+                
+                // Ống dưới - vẽ với độ dày 3 pixel
                 for (int y = gameHeight - pipe.BottomHeight - 1; y < gameHeight - 1; y++)
                 {
-                    if (pipe.X >= 0 && pipe.X < gameWidth && y >= 0 && y < gameHeight)
-                        screen[y, pipe.X] = '|';
+                    if (y >= 1 && y < gameHeight - 1)
+                    {
+                        // Vẽ ống chính
+                        screen[y, pipe.X] = pipeChar;
+                        
+                        // Vẽ viền ống nếu có chỗ
+                        if (pipe.X - 1 >= 1)
+                            screen[y, pipe.X - 1] = pipeChar;
+                        if (pipe.X + 1 < gameWidth - 1)
+                            screen[y, pipe.X + 1] = pipeChar;
+                    }
+                }
+                
+                // Vẽ mũ ống dưới (cap)
+                int bottomCapY = gameHeight - pipe.BottomHeight - 1;
+                if (bottomCapY > 1 && bottomCapY < gameHeight - 1)
+                {
+                    for (int capX = pipe.X - 2; capX <= pipe.X + 2; capX++)
+                    {
+                        if (capX >= 1 && capX < gameWidth - 1)
+                            screen[bottomCapY, capX] = '▄';
+                    }
                 }
             }
         }
         
-        // Vẽ chim
-        if (birdX >= 0 && birdX < gameWidth && birdY >= 0 && birdY < gameHeight)
+        // Vẽ chim với animation
+        if (birdX >= 1 && birdX < gameWidth - 1 && birdY >= 1 && birdY < gameHeight - 1)
         {
-            screen[birdY, birdX] = '@';
+            // Animation cho chim dựa trên velocity
+            char currentBirdChar;
+            if (birdVelocity < -0.5f)
+            {
+                currentBirdChar = '^';  // Bay lên
+            }
+            else if (birdVelocity > 0.5f)
+            {
+                currentBirdChar = 'v';  // Rơi xuống
+            }
+            else
+            {
+                currentBirdChar = birdChar;  // Bình thường
+            }
+            
+            screen[birdY, birdX] = currentBirdChar;
+            
+            // Thêm hiệu ứng cánh chim
+            birdAnimationFrame = (birdAnimationFrame + 1) % 6;
+            if (birdAnimationFrame < 3)
+            {
+                // Cánh lên
+                if (birdX - 1 >= 1) screen[birdY, birdX - 1] = '~';
+            }
+            else
+            {
+                // Cánh xuống
+                if (birdX - 1 >= 1) screen[birdY, birdX - 1] = '_';
+            }
         }
         
         // Chỉ cập nhật những ô thay đổi để tránh nhấp nháy
         RenderOptimized(screen);
         
-        // Hiển thị thông tin ở dưới màn hình game
+        // Hiển thị thông tin ở dưới màn hình game với thiết kế đẹp hơn
         Console.SetCursorPosition(0, gameHeight);
         if (!gameStarted)
         {
-            Console.Write("Nhấn SPACE để bắt đầu trò chơi!".PadRight(gameWidth));
+            string startMsg = "Nhấn SPACE để bắt đầu trò chơi!";
+            Console.Write(startMsg.PadRight(gameWidth));
             Console.SetCursorPosition(0, gameHeight + 1);
-            Console.Write("ESC để thoát".PadRight(gameWidth));
+            string exitMsg = "ESC: Thoát";
+            Console.Write(exitMsg.PadRight(gameWidth));
         }
         else
         {
-            Console.Write($"Điểm số: {score} | Level: {difficultyLevel} | Tốc độ: MAX".PadRight(gameWidth));
+            string statusMsg = $"Điểm: {score} | Level: {difficultyLevel} | Tốc độ: MAX";
+            Console.Write(statusMsg.PadRight(gameWidth));
             Console.SetCursorPosition(0, gameHeight + 1);
-            Console.Write("Nhấn SPACE để bay lên, ESC để thoát".PadRight(gameWidth));
+            string controlMsg = "SPACE: Bay lên | ESC: Thoát";
+            Console.Write(controlMsg.PadRight(gameWidth));
         }
     }
     
