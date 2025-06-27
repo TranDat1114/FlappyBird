@@ -49,8 +49,8 @@ namespace FlappyBird.Game
         /// </summary>
         private static void UpdateBirdPhysics(GameState gameState)
         {
-            // Trong God mode, điều chỉnh các thông số để tránh nhảy quá cao
-            float currentGravity = gameState.GodMode ? 0.055f : GameState.Gravity; // Tăng gravity một chút để kiểm soát tốt hơn
+            // **FAIR PLAY**: God mode uses EXACT same physics as human player
+            float currentGravity = GameState.Gravity; // NO CHEATING - same gravity for everyone
             
             // Vật lý chim với gravity và velocity mượt mà hơn
             gameState.BirdVelocity += currentGravity;
@@ -63,7 +63,7 @@ namespace FlappyBird.Game
             
             gameState.BirdY += (int)Math.Round(gameState.BirdVelocity);
             
-            // Giới hạn vị trí chim
+            // **FAIR BOUNDARIES**: Same collision rules for everyone
             if (gameState.BirdY < 1) 
             {
                 gameState.BirdY = 1;
@@ -72,17 +72,9 @@ namespace FlappyBird.Game
             
             if (gameState.BirdY >= GameState.GameHeight - 1)
             {
-                // Trong God mode, không cho chim chết khi chạm viền dưới
-                if (gameState.GodMode)
-                {
-                    gameState.BirdY = GameState.GameHeight - 2; // Đặt chim ngay trên viền dưới
-                    gameState.BirdVelocity = -0.7f; // Sử dụng jump strength tối ưu cho God mode
-                }
-                else
-                {
-                    gameState.GameOver = true;
-                    return;
-                }
+                // **NO SPECIAL TREATMENT**: God mode dies just like human player
+                gameState.GameOver = true;
+                return;
             }
         }
         

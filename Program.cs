@@ -31,6 +31,9 @@ class FlappyBirdGame
         // Vòng lặp chính để cho phép restart game
         bool exitProgram = false;
         
+        // Tải thống kê God mode từ file khi khởi động
+        GameLogger.LoadGodModeStats(gameState);
+        
         while (!exitProgram)
         {
             // Reset flag thoát cho game mới
@@ -76,6 +79,8 @@ class FlappyBirdGame
                     {
                         gameState.GodModeBestScore = gameState.Score;
                     }
+                    // Lưu thống kê sau mỗi lần chơi
+                    GameLogger.SaveGodModeStats(gameState);
                 }
                 
                 // God mode auto-restart
@@ -143,6 +148,7 @@ class FlappyBirdGame
                         {
                             // Xóa dữ liệu học và reset
                             GameLogger.ClearFailureData();
+                            GameLogger.ClearGodModeStats();
                             gameState.GodModeAttempts = 0;
                             gameState.GodModeBestScore = 0;
                             Console.SetCursorPosition(0, GameState.GameHeight + 4);

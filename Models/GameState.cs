@@ -45,6 +45,11 @@ namespace FlappyBird.Models
         public int GodModeAttempts { get; set; } = 0; // Số lần thử của God mode
         public int GodModeBestScore { get; set; } = 0; // Điểm cao nhất của God mode
         
+        /// <summary>
+        /// Kiểm tra God mode có đang hoạt động không
+        /// </summary>
+        public bool IsGodModeActive => GodMode && GameStarted;
+        
         // === OPTIMIZATION ===
         public bool ForceFullRedraw { get; set; } = false;
         public int LastScore { get; set; } = 0;

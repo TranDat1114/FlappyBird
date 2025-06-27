@@ -221,6 +221,76 @@ namespace FlappyBird.Utils
                 // Bỏ qua lỗi
             }
         }
+        
+        /// <summary>
+        /// Lưu thống kê God mode vào file
+        /// </summary>
+        public static void SaveGodModeStats(GameState gameState)
+        {
+            try
+            {
+                var stats = new GodModeStats
+                {
+                    Attempts = gameState.GodModeAttempts,
+                    BestScore = gameState.GodModeBestScore,
+                    AutoRestart = gameState.GodModeAutoRestart,
+                    LastUpdated = DateTime.Now
+                };
+                
+                string json = JsonSerializer.Serialize(stats, new JsonSerializerOptions 
+                { 
+                    WriteIndented = true 
+                });
+                File.WriteAllText("godmode_stats.json", json);
+            }
+            catch (Exception)
+            {
+                // Không hiển thị lỗi trong game, chỉ bỏ qua
+            }
+        }
+        
+        /// <summary>
+        /// Tải thống kê God mode từ file
+        /// </summary>
+        public static void LoadGodModeStats(GameState gameState)
+        {
+            try
+            {
+                if (File.Exists("godmode_stats.json"))
+                {
+                    string json = File.ReadAllText("godmode_stats.json");
+                    var stats = JsonSerializer.Deserialize<GodModeStats>(json);
+                    if (stats != null)
+                    {
+                        gameState.GodModeAttempts = stats.Attempts;
+                        gameState.GodModeBestScore = stats.BestScore;
+                        gameState.GodModeAutoRestart = stats.AutoRestart;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Nếu có lỗi, giữ nguyên giá trị mặc định
+            }
+        }
+        
+        /// <summary>
+        /// Xóa thống kê God mode
+        /// </summary>
+        public static void ClearGodModeStats()
+        {
+            try
+            {
+                if (File.Exists("godmode_stats.json"))
+                {
+                    File.Delete("godmode_stats.json");
+                }
+            }
+            catch (Exception)
+            {
+                // Bỏ qua lỗi
+            }
+        }
     }
     
     /// <summary>
@@ -249,5 +319,16 @@ namespace FlappyBird.Utils
             
             return Math.Min(1.0f, conservativeness);
         }
+    }
+    
+    /// <summary>
+    /// Dữ liệu thống kê God mode
+    /// </summary>
+    public class GodModeStats
+    {
+        public int Attempts { get; set; }
+        public int BestScore { get; set; }
+        public bool AutoRestart { get; set; }
+        public DateTime LastUpdated { get; set; }
     }
 }
