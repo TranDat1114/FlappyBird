@@ -66,11 +66,11 @@ namespace FlappyBird.AI
                 return; // Chỉ thoát khi gần trần và không ở emergency floor
             }
             
-            // **FIND NEAREST PIPE**: Tìm ống gần nhất
+            // **FIND NEAREST PIPE**: Tìm ống gần nhất - ENHANCED EARLY DETECTION
             Pipe? nearestPipe = null;
             foreach (var pipe in gameState.Pipes)
             {
-                if (pipe.X > GameState.BirdX - 5)
+                if (pipe.X > GameState.BirdX - 20) // Mở rộng detection range đáng kể
                 {
                     nearestPipe = pipe;
                     break;
@@ -79,66 +79,70 @@ namespace FlappyBird.AI
             
             bool shouldJump = false;
             string jumpReason = "";
+            float optimalY = GameState.GameHeight / 2f; // Default value
+            string targetSource = "Default";
             
             if (nearestPipe != null)
             {
-                // **PIPE-AWARE STRATEGY**: Điều chỉnh dựa trên ống
+                // **REVOLUTIONARY TARGET CALCULATION**: Sử dụng learned optimal position
                 int gapTop = nearestPipe.TopHeight;
                 int gapBottom = GameState.GameHeight - nearestPipe.BottomHeight;
-                int gapCenter = (gapTop + gapBottom) / 2;
                 int distanceToPipe = nearestPipe.X - GameState.BirdX;
                 
-                // **SAFE PIPE ZONES**: Vùng an toàn cho ống cụ thể với learning
-                int learnedMargin = GetLearnedSafetyMargin(nearestPipe.GapSize);
-                int pipeSafeTop = gapTop + Math.Max(2, learnedMargin);
-                int pipeSafeBottom = gapBottom - Math.Max(2, learnedMargin);
-                int pipeTarget = (pipeSafeTop + pipeSafeBottom) / 2;
+                // **LEARNED OPTIMAL POSITION**: Tìm pattern phù hợp
+                var matchedPattern = learnedPatterns.FirstOrDefault(p => 
+                    p.GapSize == nearestPipe.GapSize && 
+                    Math.Abs(p.PipeTopHeight - nearestPipe.TopHeight) <= 1);
                 
-                // **PREDICTION**: Dự đoán vị trí khi đến ống
+                int safetyMargin;
+                
+                if (matchedPattern != null && matchedPattern.Confidence > 0.3f)
+                {
+                    // **USE LEARNED OPTIMAL**: AI đã học được pattern này
+                    optimalY = matchedPattern.OptimalY;
+                    safetyMargin = matchedPattern.SafetyMargin;
+                    targetSource = $"Learned(C:{matchedPattern.Confidence:F1})";
+                }
+                else
+                {
+                    // **THEORETICAL OPTIMAL**: PipeTop + GapSize/2
+                    optimalY = nearestPipe.TopHeight + (nearestPipe.GapSize / 2f);
+                    safetyMargin = nearestPipe.GapSize <= 7 ? 2 : 1;
+                    targetSource = "Theoretical";
+                }
+                
+                // **SAFE ZONES** dựa trên optimal position
+                float pipeSafeTop = gapTop + safetyMargin;
+                float pipeSafeBottom = gapBottom - safetyMargin;
+                
+                // **PREDICTION**: Dự đoán vị trí khi đến ống với gravity compensation
                 float timeToReach = distanceToPipe / 8f;
-                float predictedY = gameState.BirdY + gameState.BirdVelocity * timeToReach;
+                float gravityEffect = 0.5f * 0.08f * timeToReach * timeToReach; // s = 0.5*g*t² (gravity = 0.08f)
+                float predictedY = gameState.BirdY + gameState.BirdVelocity * timeToReach + gravityEffect;
                 
-                // **PIPE DECISIONS** với enhanced safety:
+                // **SIMPLIFIED DECISION LOGIC**: Chỉ 3 rules rõ ràng, không xung đột
                 
                 // **CRITICAL CHECK**: Không nhảy nếu sẽ va chạm ống trên
                 float jumpResultY = gameState.BirdY + jumpStrength;
                 bool wouldHitTop = jumpResultY <= pipeSafeTop;
                 
-                // 0. **LEARNED DANGEROUS POSITION**: Tránh vị trí đã học là nguy hiểm
-                if (IsLearnedDangerousPosition((int)gameState.BirdY, nearestPipe) && gameState.BirdY > 9 && !wouldHitTop)
-                {
-                    shouldJump = true;
-                    jumpReason = "LEARNED_DANGER_AVOID";
-                }
-                // 1. **EMERGENCY FLOOR**: Tránh chạm đáy (ưu tiên cao nhất)
-                else if (gameState.BirdY >= GameState.GameHeight - 3)
+                // **RULE 1: EMERGENCY** - Tránh chạm đáy tuyệt đối (ưu tiên cao nhất)
+                if (gameState.BirdY >= GameState.GameHeight - 3)
                 {
                     shouldJump = true;
                     jumpReason = "EMERGENCY_FLOOR";
                 }
-                // 1.5. **DANGEROUS BOTTOM**: Tránh vùng nguy hiểm gần đáy
-                else if (gameState.BirdY >= GameState.GameHeight - 5 && gameState.BirdVelocity > 0.2f)
+                // **RULE 2: OPTIMAL TARGET** - Điều chỉnh về optimal position (core logic)
+                else if (distanceToPipe <= 35 && gameState.BirdY > optimalY + 1.5f && !wouldHitTop)
                 {
                     shouldJump = true;
-                    jumpReason = "DANGEROUS_BOTTOM";
+                    jumpReason = $"TARGET_OPT_{targetSource}_{optimalY:F1}";
                 }
-                // 2. **PIPE BOTTOM COLLISION**: Tránh va chạm đáy ống (cân bằng + safe)
-                else if (distanceToPipe <= 25 && predictedY > pipeSafeBottom && gameState.BirdY > 9 && !wouldHitTop)
+                // **RULE 3: PREDICTION** - Dự đoán va chạm đáy dựa trên trajectory
+                else if (distanceToPipe <= 25 && predictedY > pipeSafeBottom && !wouldHitTop)
                 {
                     shouldJump = true;
-                    jumpReason = "AVOID_PIPE_BOTTOM";
-                }
-                // 3. **PIPE ALIGNMENT**: Điều chỉnh về center của gap (cân bằng + safe)
-                else if (distanceToPipe <= 35 && gameState.BirdY > pipeTarget + 2 && gameState.BirdY > 10 && !wouldHitTop)
-                {
-                    shouldJump = true;
-                    jumpReason = "ALIGN_TO_PIPE";
-                }
-                // 4. **FALLING TOO FAST**: Kiểm soát tốc độ rơi (cân bằng + safe)
-                else if (distanceToPipe <= 20 && gameState.BirdVelocity > 0.4f && gameState.BirdY > 9 && !wouldHitTop)
-                {
-                    shouldJump = true;
-                    jumpReason = "CONTROL_FALL_SPEED";
+                    jumpReason = "PREDICT_COLLISION";
                 }
             }
             else
@@ -171,67 +175,106 @@ namespace FlappyBird.AI
                 }
             }
             
-            // **EXECUTE JUMP** với enhanced debug log
+            // **EXECUTE JUMP** với revolutionary debug log
             if (shouldJump)
             {
                 gameState.BirdVelocity = jumpStrength;
                 lastJumpTime = DateTime.Now;
                 
+                // **ENHANCED DEBUG** - hiển thị learned pattern information
+                string debugInfo = nearestPipe != null ? 
+                    $"Gap{nearestPipe.GapSize}Top{nearestPipe.TopHeight}->Opt{optimalY:F1}@Dist{nearestPipe.X - GameState.BirdX}" : 
+                    "NoGap";
+                
                 Console.SetCursorPosition(1, GameState.GameHeight + 2);
-                Console.Write($"AI: {jumpReason} (Y:{gameState.BirdY:F1}→{gameState.BirdY + jumpStrength:F1})".PadRight(60));
+                Console.Write($"AI: {jumpReason} {debugInfo} (Y:{gameState.BirdY:F1}→{gameState.BirdY + jumpStrength:F1})".PadRight(100));
             }
             else
             {
+                string gapInfo = nearestPipe != null ? $"Gap:{nearestPipe.GapSize},Dist:{nearestPipe.X - GameState.BirdX}" : "NoGap";
                 Console.SetCursorPosition(1, GameState.GameHeight + 2);
-                Console.Write($"AI: COASTING (Y:{gameState.BirdY:F1}, V:{gameState.BirdVelocity:F2})".PadRight(60));
+                Console.Write($"AI: COASTING {gapInfo} (Y:{gameState.BirdY:F1}, V:{gameState.BirdVelocity:F2})".PadRight(80));
             }
         }
         
         /// <summary>
-        /// Cập nhật học tập thông minh từ dữ liệu thất bại
+        /// Cập nhật học tập thông minh từ dữ liệu thất bại - FIXED ALGORITHM
         /// </summary>
         private static void UpdateLearning()
         {
             var failures = GameLogger.LoadGodModeFailures();
             if (failures.Count == 0) return;
             
-            // **ENHANCED LEARNING**: Học nhiều pattern phức tạp hơn
+            // **REVOLUTIONARY LEARNING**: Học theo (GapSize + PipeTopHeight) combo
             learnedPatterns.Clear();
             
-            // Học về gap size và safety margin
-            var gapGroups = failures.GroupBy(f => f.PipeGapSize);
-            foreach (var group in gapGroups)
+            // **COMBO LEARNING**: Nhóm theo cả GapSize VÀ PipeTopHeight
+            var comboGroups = failures.GroupBy(f => new { 
+                f.PipeGapSize, 
+                PipeTopGroup = (f.PipeTopHeight / 2) * 2  // Group theo 2: 4-5, 6-7, 8-9
+            });
+            
+            foreach (var group in comboGroups)
             {
-                int gapSize = group.Key;
-                var topCollisions = group.Count(f => f.CollisionType == "top");
-                var bottomCollisions = group.Count(f => f.CollisionType == "bottom");
-                var totalForGap = group.Count();
+                int gapSize = group.Key.PipeGapSize;
+                int topGroup = group.Key.PipeTopGroup;
+                var groupFailures = group.ToList();
                 
-                if (totalForGap >= 2) // Học từ ít nhất 2 lần thất bại
+                if (groupFailures.Count >= 1) // Học từ ít nhất 1 lần thất bại
                 {
-                    float topRate = (float)topCollisions / totalForGap;
-                    float bottomRate = (float)bottomCollisions / totalForGap;
+                    var topCollisions = groupFailures.Count(f => f.CollisionType == "top");
+                    var bottomCollisions = groupFailures.Count(f => f.CollisionType == "bottom");
                     
-                    // **SMART SAFETY MARGIN**: Tăng margin dựa trên loại va chạm chủ yếu
-                    int safetyMargin = 1; // Base margin
+                    // **SIMPLIFIED LEARNING**: Chỉ học optimal position, không adjust phức tạp
+                    float avgPipeTop = (float)groupFailures.Average(f => f.PipeTopHeight);
+                    float theoreticalOptimal = avgPipeTop + (gapSize / 2f); // Center of gap
                     
-                    if (topRate > 0.4f) // Nếu va chạm ống trên nhiều
+                    // **SIMPLE ADJUSTMENT**: Chỉ adjust nhẹ dựa trên collision pattern
+                    float learnedOptimal = theoreticalOptimal;
+                    int safetyMargin = 1;
+                    
+                    if (topCollisions > bottomCollisions && topCollisions >= 2)
                     {
-                        safetyMargin = Math.Min(4, (int)(topRate * 6)); // Tăng margin để tránh trần
+                        // Nhiều top collision → target hơi thấp hơn
+                        learnedOptimal = theoreticalOptimal + 0.5f;
+                        safetyMargin = 2;
                     }
-                    else if (bottomRate > 0.5f) // Nếu va chạm ống dưới nhiều  
+                    else if (bottomCollisions > topCollisions && bottomCollisions >= 2)
                     {
-                        safetyMargin = Math.Max(1, (int)(bottomRate * 3)); // Margin vừa phải để không quá conservative
+                        // Nhiều bottom collision → target hơi cao hơn  
+                        learnedOptimal = theoreticalOptimal - 0.5f;
+                        safetyMargin = 2;
                     }
+                    
+                    // **STRICT SAFETY BOUNDS** - luôn trong gap
+                    learnedOptimal = Math.Max(learnedOptimal, avgPipeTop + 2.0f);
+                    learnedOptimal = Math.Min(learnedOptimal, avgPipeTop + gapSize - 2.0f);
                     
                     learnedPatterns.Add(new SimplePattern
                     {
                         GapSize = gapSize,
+                        PipeTopHeight = (int)avgPipeTop,
+                        OptimalY = learnedOptimal,
                         SafetyMargin = safetyMargin,
-                        Confidence = Math.Min(totalForGap / 5f, 1f),
-                        TopCollisionRate = topRate,
-                        BottomCollisionRate = bottomRate
+                        Confidence = Math.Min(groupFailures.Count / 2f, 1f),
+                        TopCollisionRate = (float)topCollisions / groupFailures.Count,
+                        BottomCollisionRate = (float)bottomCollisions / groupFailures.Count,
+                        SampleSize = groupFailures.Count
                     });
+                }
+            }
+            
+            Console.SetCursorPosition(1, GameState.GameHeight + 3);
+            Console.Write($"[LEARNING] Patterns: {learnedPatterns.Count}, Data: {failures.Count} failures".PadRight(70));
+            
+            // **VALIDATION DEBUG**: Hiển thị learned patterns cho specific combos
+            if (learnedPatterns.Count > 0)
+            {
+                Console.SetCursorPosition(1, GameState.GameHeight + 4);
+                var gap8Top5 = learnedPatterns.FirstOrDefault(p => p.GapSize == 8 && Math.Abs(p.PipeTopHeight - 5) <= 1);
+                if (gap8Top5 != null)
+                {
+                    Console.Write($"[GAP8-TOP5] Learned: OptY={gap8Top5.OptimalY:F1}, Conf={gap8Top5.Confidence:F2}, Samples={gap8Top5.SampleSize}".PadRight(70));
                 }
             }
         }
@@ -310,14 +353,17 @@ namespace FlappyBird.AI
     }
     
     /// <summary>
-    /// Pattern thông minh AI học được
+    /// Pattern thông minh AI học được - ENHANCED VERSION
     /// </summary>
     public class SimplePattern
     {
         public int GapSize { get; set; }
+        public int PipeTopHeight { get; set; }  // NEW: Pipe top height
+        public float OptimalY { get; set; }     // NEW: Learned optimal position
         public int SafetyMargin { get; set; }
         public float Confidence { get; set; }
         public float TopCollisionRate { get; set; }
         public float BottomCollisionRate { get; set; }
+        public int SampleSize { get; set; }     // NEW: Number of failures for this pattern
     }
 }
