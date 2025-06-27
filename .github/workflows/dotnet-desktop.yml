@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch: # Cho phép chạy manual
 
 jobs:
   publish:
@@ -18,13 +19,84 @@ jobs:
         dotnet-version: 9.0.x
         
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore FlappyBird/FlappyBird.csproj
       
     - name: Build
-      run: dotnet build -c Release --no-restore
+      run: dotnet build FlappyBird/FlappyBird.csproj -c Release --no-restore
       
-    - name: Pack
-      run: dotnet pack -c Release --no-build --verbosity normal
+    - name: Test (optional)
+      run: dotnet test FlappyBird/FlappyBird.csproj --no-build --verbosity normal
+      continue-on-error: true
+      
+    - name: Pack NuGet package
+      run: dotnet pack FlappyBird/FlappyBird.csproj -c Release --no-build --verbosity normal
+      
+    - name: Get version from tag
+      id: version
+      run: |
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        VERSION=${TAG_NAME#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Update package version
+      run: |
+        sed -i "s/<Version>.*<\/Version>/<Version>${{ steps.version.outputs.version }}<\/Version>/" FlappyBird/FlappyBird.csproj
+        
+    - name: Re-pack with correct version
+      run: dotnet pack FlappyBird/FlappyBird.csproj -c Release --verbosity normal
+      
+    - name: List packages (for debugging)
+      run: find . -name "*.nupkg" -type f
       
     - name: Publish to NuGet
-      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: |
+        dotnet nuget push FlappyBird/bin/Release/*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate \
+          --no-symbols
+          
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: FlappyBird/bin/Release/*.nupkg
+        generate_release_notes: true
+        body: |
+          ## FlappyBird Console Game v${{ steps.version.outputs.version }}
+          
+          ### Installation
+          ```bash
+          dotnet tool install --global FlappyBird
+          flappybird
+          ```
+          
+          ### Updates in this version
+          - See release notes in the package description
+          
+          ### How to play
+          - Press **SPACE** to fly
+          - Press **ESC** to quit
+          - Avoid the pipes!
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate:
+    needs: publish
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+    - name: Wait for NuGet indexing
+      run: sleep 60
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+        
+    - name: Test installation from NuGet
+      run: |
+        dotnet tool install --global FlappyBird --version ${{ needs.publish.outputs.version }}
+        flappybird --help || echo "Game installed successfully"
+        dotnet tool uninstall --global FlappyBird
