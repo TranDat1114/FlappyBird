@@ -7,13 +7,13 @@ namespace FlappyBird.Models
     /// </summary>
     public class GameState
     {
-        // === GAME DIMENSIONS ===
-        public const int GameWidth = 80;
-        public const int GameHeight = 20;
-        public const int BirdX = 10;
+        // === GAME DIMENSIONS - PHÙ HỢP VỚI MENU DESIGN ===
+        public const int GameWidth = 66;  // Khớp với menu border width
+        public const int GameHeight = 22; // Tăng height để có không gian chơi tốt hơn
+        public const int BirdX = 8;       // Điều chỉnh vị trí chim phù hợp với width mới
         
         // === GAME STATE ===
-        public int BirdY { get; set; } = 8; // Vị trí khởi đầu ở giữa màn hình
+        public int BirdY { get; set; } = 11; // Vị trí khởi đầu ở giữa màn hình (22/2 = 11)
         public float BirdVelocity { get; set; } = 0f;
         public int Score { get; set; } = 0;
         public bool GameOver { get; set; } = false;
@@ -25,16 +25,16 @@ namespace FlappyBird.Models
         public const float JumpStrength = -0.8f; // Giảm xuống: vừa đủ để vượt gap mà không bay quá cao
         public const float MaxFallSpeed = 1.0f; // Cân bằng: nhanh nhưng vẫn kiểm soát được
         
-        // === PIPES AND DIFFICULTY ===
+        // === PIPES AND DIFFICULTY - TỐI ƯU CHO WIDTH MỚI ===
         public List<Pipe> Pipes { get; set; } = new List<Pipe>();
-        public const int PipeSpacing = 42; // Tối ưu để chỉ có tối đa 2 ống trên màn hình
+        public const int PipeSpacing = 35; // Điều chỉnh cho width 66: tối đa 2 ống trên màn hình
         public int LastPipeX { get; set; } = GameWidth;
         public int DifficultyLevel { get; set; } = 1; // Bắt đầu từ level 1
         public int PipeSpeed { get; set; } = 4; // Chậm hơn ban đầu để học
         
-        // === GAP SIZE ĐỘNG - TĂNG DẦN THEO SKILL ===
-        public const int BaseGapSize = 9; // Gap lớn ban đầu cho người mới
-        public const int MinGapSize = 6; // Gap tối thiểu vẫn chơi được
+        // === GAP SIZE ĐỘNG - TỐI ƯU CHO HEIGHT MỚI ===
+        public const int BaseGapSize = 10; // Gap lớn hơn cho height 22
+        public const int MinGapSize = 7;   // Gap tối thiểu vẫn chơi được
         
         // === ANIMATION & EFFECTS ===
         public int BirdAnimationFrame { get; set; } = 0;
@@ -66,7 +66,7 @@ namespace FlappyBird.Models
         /// </summary>
         public void Reset()
         {
-            BirdY = 8; // Vị trí giữa màn hình
+            BirdY = 11; // Vị trí giữa màn hình (22/2 = 11)
             BirdVelocity = 0f;
             Score = 0;
             GameOver = false;

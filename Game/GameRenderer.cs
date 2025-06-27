@@ -22,7 +22,7 @@ namespace FlappyBird.Game
         private static readonly char BackgroundChar = '·';    // Light dot for background pattern
         
         /// <summary>
-        /// Vẽ toàn bộ game
+        /// Vẽ toàn bộ game với thiết kế khớp menu
         /// </summary>
         public static void Draw(GameState gameState)
         {
@@ -32,8 +32,8 @@ namespace FlappyBird.Game
             // Khởi tạo nền với pattern nhẹ
             InitializeBackground(screen);
             
-            // Vẽ viền game
-            DrawBorders(screen);
+            // Vẽ viền game với thiết kế khớp menu
+            DrawGameBorders(screen);
             
             // Vẽ ống
             DrawPipes(screen, gameState.Pipes);
@@ -81,9 +81,9 @@ namespace FlappyBird.Game
         }
         
         /// <summary>
-        /// Vẽ viền game
+        /// Vẽ viền game với thiết kế đẹp khớp với menu
         /// </summary>
-        private static void DrawBorders(char[,] screen)
+        private static void DrawGameBorders(char[,] screen)
         {
             // Viền trên
             for (int x = 1; x < GameState.GameWidth - 1; x++)
@@ -264,57 +264,27 @@ namespace FlappyBird.Game
         }
         
         /// <summary>
-        /// Render UI text
+        /// Render UI text - Simplified for optimization
         /// </summary>
         private static void RenderUI(GameState gameState)
         {
-            // Hiển thị thông tin ở dưới màn hình game với thiết kế đẹp hơn
-            Console.SetCursorPosition(0, GameState.GameHeight);
-            if (!gameState.GameStarted)
+            // Simple UI updates for optimized rendering
+            // Full UI rendering handled by RenderWithConsistentDesign
+            if (gameState.ForceFullRedraw)
             {
-                string startMsg = "SPACE: Bắt đầu | G: God Mode | ESC: Thoát";
-                if (gameState.GodMode)
-                {
-                    startMsg = "SPACE: Bắt đầu | A: Auto-restart | ESC: Thoát";
-                }
-                Console.Write(startMsg.PadRight(GameState.GameWidth));
-                Console.SetCursorPosition(0, GameState.GameHeight + 1);
-                
-                string modeMsg;
-                if (gameState.GodMode)
-                {
-                    var improvement = GameLogger.AnalyzeFailures();
-                    if (gameState.GodModeAutoRestart)
-                    {
-                        modeMsg = $"GOD AUTO MODE - Attempts: {gameState.GodModeAttempts} | Best: {gameState.GodModeBestScore} | Failures: {improvement.TotalFailures}";
-                    }
-                    else
-                    {
-                        modeMsg = $"GOD MODE - Learning from {improvement.TotalFailures} failures | Conservative: {improvement.GetRecommendedConservativeness():P0}";
-                    }
-                    Console.ForegroundColor = gameState.GodModeAutoRestart ? ConsoleColor.Cyan : ConsoleColor.Magenta;
-                }
-                else
-                {
-                    modeMsg = "Chọn chế độ chơi của bạn";
-                    Console.ForegroundColor = ConsoleColor.White;
-                }
-                
-                Console.Write(modeMsg.PadRight(GameState.GameWidth));
-                Console.ResetColor();
+                // Will trigger full redraw next time
+                return;
             }
-            else
+            
+            // Quick status updates during gameplay
+            if (gameState.GameStarted)
             {
-                string statusMsg = $"Điểm: {gameState.Score} | Level: {gameState.DifficultyLevel}";
-                if (gameState.GodMode)
-                {
-                    statusMsg += $" | GOD #{gameState.GodModeAttempts}";
-                    if (gameState.GodModeAutoRestart) statusMsg += " AUTO";
-                }
-                Console.Write(statusMsg.PadRight(GameState.GameWidth));
-                Console.SetCursorPosition(0, GameState.GameHeight + 1);
-                string controlMsg = gameState.GodMode ? "ESC: Thoát (God Mode)" : "SPACE: Bay lên | ESC: Thoát";
-                Console.Write(controlMsg.PadRight(GameState.GameWidth));
+                Console.SetCursorPosition(0, GameState.GameHeight + 6);
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                
+                string statusUpdate = $"║ Score: {gameState.Score,3} | Level: {gameState.DifficultyLevel,2} | Speed: {gameState.PipeSpeed} | Gap: {gameState.GetCurrentGapSize(),2}                    ║";
+                Console.Write(statusUpdate.PadRight(66));
+                Console.ResetColor();
             }
         }
         
@@ -334,6 +304,62 @@ namespace FlappyBird.Game
             
             // Xóa màn hình một lần duy nhất
             Console.Clear();
+        }
+        
+        /// <summary>
+        /// Render game với header và footer đẹp, khớp với thiết kế menu
+        /// </summary>
+        public static void RenderWithConsistentDesign(GameState gameState)
+        {
+            Console.Clear();
+            
+            // Render game header với thiết kế khớp menu
+            RenderGameHeader();
+            
+            // Render game content
+            Draw(gameState);
+            
+            // Render game footer với thông tin trạng thái
+            RenderGameFooter(gameState);
+        }
+        
+        /// <summary>
+        /// Render header cho game với thiết kế khớp menu
+        /// </summary>
+        private static void RenderGameHeader()
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║                        FLAPPY BIRD GAME                        ║");
+            Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+        }
+        
+        /// <summary>
+        /// Render footer cho game với thông tin trạng thái
+        /// </summary>
+        private static void RenderGameFooter(GameState gameState)
+        {
+            Console.SetCursorPosition(0, GameState.GameHeight + 4);
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
+            
+            if (!gameState.GameStarted)
+            {
+                Console.WriteLine("║ SPACE: Bat dau | ESC: Thoat                                    ║");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("║ Che do thu cong - Su dung SPACE de nhay                        ║");
+            }
+            else
+            {
+                Console.WriteLine($"║ Score: {gameState.Score,3} | Level: {gameState.DifficultyLevel,2} | Speed: {gameState.PipeSpeed} | Gap: {gameState.GetCurrentGapSize(),2}        ║");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("║ MANUAL CONTROL | Use SPACE to jump                             ║");
+            }
+            
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
         }
     }
 }
