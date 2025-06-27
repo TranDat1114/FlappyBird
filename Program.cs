@@ -7,9 +7,10 @@ class FlappyBirdGame
     private static int gameWidth = 80;
     private static int gameHeight = 20;
     private static int birdX = 10;
-    private static int birdY = gameHeight / 2;
+    private static int birdY = 5; // Bắt đầu ở cao hơn (thay vì gameHeight / 2)
     private static int score = 0;
     private static bool gameOver = false;
+    private static bool gameStarted = false; // Thêm trạng thái game chưa bắt đầu
     private static Random random = new Random();
     
     private static List<Pipe> pipes = new List<Pipe>();
@@ -24,7 +25,7 @@ class FlappyBirdGame
     
     // Thêm biến cho hệ thống tăng độ khó
     private static int difficultyLevel = 1;
-    private static int pipeSpeed = 4; // Tốc độ ban đầu (frame delay)
+    private static int pipeSpeed = 2; // Tốc độ ban đầu rất nhanh (frame delay)
     
     // Thêm biến cho double buffering để tránh nhấp nháy
     private static char[,] currentScreen = new char[gameHeight, gameWidth];
@@ -79,6 +80,10 @@ class FlappyBirdGame
             ConsoleKeyInfo keyInfo = Console.ReadKey(true);
             if (keyInfo.Key == ConsoleKey.Spacebar)
             {
+                if (!gameStarted)
+                {
+                    gameStarted = true; // Bắt đầu game khi nhấn space đầu tiên
+                }
                 birdVelocity = jumpStrength; // Sử dụng velocity thay vì thay đổi trực tiếp position
             }
             else if (keyInfo.Key == ConsoleKey.Escape)
@@ -107,6 +112,12 @@ class FlappyBirdGame
     static void Update()
     {
         frameCounter++;
+        
+        // Chỉ cập nhật game khi đã bắt đầu
+        if (!gameStarted)
+        {
+            return; // Chim đứng yên cho đến khi nhấn space
+        }
         
         // Cập nhật độ khó dựa trên điểm số
         UpdateDifficulty();
@@ -163,11 +174,11 @@ class FlappyBirdGame
         {
             difficultyLevel = newDifficultyLevel;
             
-            // Tăng tốc độ ống (giảm frame delay, tối thiểu là 2)
-            pipeSpeed = Math.Max(2, 5 - difficultyLevel);
+            // Giữ tốc độ tối đa (pipeSpeed = 2) từ đầu
+            pipeSpeed = 2; // Luôn giữ tốc độ tối đa
             
-            // Tăng gravity nhẹ theo level
-            gravity = 0.15f + (difficultyLevel - 1) * 0.02f;
+            // Tăng gravity nhẹ theo level để tăng độ khó
+            gravity = 0.15f + (difficultyLevel - 1) * 0.03f; // Tăng gravity nhiều hơn
         }
     }
     
@@ -262,9 +273,18 @@ class FlappyBirdGame
         
         // Hiển thị thông tin ở dưới màn hình game
         Console.SetCursorPosition(0, gameHeight);
-        Console.Write($"Điểm số: {score} | Level: {difficultyLevel} | Tốc độ: {6 - pipeSpeed}".PadRight(gameWidth));
-        Console.SetCursorPosition(0, gameHeight + 1);
-        Console.Write("Nhấn SPACE để bay lên, ESC để thoát".PadRight(gameWidth));
+        if (!gameStarted)
+        {
+            Console.Write("Nhấn SPACE để bắt đầu trò chơi!".PadRight(gameWidth));
+            Console.SetCursorPosition(0, gameHeight + 1);
+            Console.Write("ESC để thoát".PadRight(gameWidth));
+        }
+        else
+        {
+            Console.Write($"Điểm số: {score} | Level: {difficultyLevel} | Tốc độ: MAX".PadRight(gameWidth));
+            Console.SetCursorPosition(0, gameHeight + 1);
+            Console.Write("Nhấn SPACE để bay lên, ESC để thoát".PadRight(gameWidth));
+        }
     }
     
     static void RenderOptimized(char[,] newScreen)
