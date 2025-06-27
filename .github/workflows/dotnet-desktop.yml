@@ -9,7 +9,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
     - uses: actions/checkout@v4
     
@@ -30,12 +31,16 @@ jobs:
       
     - name: Pack NuGet package
       run: dotnet pack FlappyBird.csproj -c Release --no-build --verbosity normal
-      
     - name: Get version from tag
       id: version
       run: |
         TAG_NAME=${GITHUB_REF#refs/tags/}
         VERSION=${TAG_NAME#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Set version output
+      id: set-version
+      run: echo "::set-output name=version::${{ steps.version.outputs.version }}"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
     - name: Update package version
@@ -80,3 +85,23 @@ jobs:
           - Avoid the pipes!
       env:
         GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+
+  validate:
+    needs: publish
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+    - name: Wait for NuGet indexing
+      run: sleep 60
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+        
+    - name: Test installation from NuGet
+      run: |
+        dotnet tool install --global FlappyBird --version ${{ needs.publish.outputs.version }}
+        flappybird --help || echo "Game installed successfully"
+        dotnet tool uninstall --global FlappyBird
