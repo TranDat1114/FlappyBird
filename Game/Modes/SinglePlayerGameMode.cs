@@ -11,34 +11,35 @@ namespace FlappyBird.Game.Modes
     public class SinglePlayerGameMode : GameModeBase
     {
         private GameState gameState = new GameState();
-        
+
         // === MENU CONSISTENCY CONSTANTS ===
         private const int MENU_BORDER_WIDTH = 66;  // Khớp chính xác với menu border
         private const int GAME_DISPLAY_HEIGHT = 22; // Chiều cao vùng game
         private const int TOTAL_DISPLAY_HEIGHT = 30; // Tổng chiều cao (game + header + footer)
-        
+
         // === GAME OVER MENU STATE ===
         private bool showGameOverMenu = false;
         private int gameOverSelectedIndex = 0; // 0: Chơi lại, 1: Thoát
         private readonly string[] gameOverOptions = { "Choi lai", "Ve menu chinh" };
-        
+        private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
+
         public override void Initialize()
         {
             // Đảm bảo dimensions khớp với menu design
             ValidateMenuConsistency();
-            
+
             gameState.Reset();
-            
+
             // Initialize game với border dimensions chính xác
             InitializeGameWithMenuConsistentBorders();
-            
+
             // Initialize screen buffer với kích thước tối ưu
             GameRenderer.InitializeScreen(gameState);
-            
+
             // Render lần đầu với thiết kế 100% nhất quán với menu
             GameRenderer.RenderWithConsistentDesign(gameState);
         }
-        
+
         /// <summary>
         /// Validate rằng game dimensions khớp hoàn toàn với menu
         /// </summary>
@@ -48,66 +49,83 @@ namespace FlappyBird.Game.Modes
             {
                 throw new InvalidOperationException($"Game width ({GameState.GameWidth}) không khớp với menu border width ({MENU_BORDER_WIDTH})");
             }
-            
+
             if (GameState.GameHeight != GAME_DISPLAY_HEIGHT)
             {
                 throw new InvalidOperationException($"Game height ({GameState.GameHeight}) không phù hợp với display height ({GAME_DISPLAY_HEIGHT})");
             }
         }
-        
+
         /// <summary>
         /// Khởi tạo game với border hoàn toàn nhất quán với menu design
         /// </summary>
         private void InitializeGameWithMenuConsistentBorders()
         {
             gameState.Pipes.Clear();
-            
+
             // Tạo pipe đầu tiên với spacing phù hợp với border width
             int initialPipeX = GameState.GameWidth - 1;
             gameState.Pipes.Add(new Pipe(initialPipeX, GameState.BaseGapSize, GameState.GameHeight, Random));
-            
+
             // Set last pipe position để spacing đều đặn
             gameState.LastPipeX = initialPipeX;
         }
-        
+
         public override void Update()
         {
             gameState.FrameCounter++;
-            
+
             // Nếu đang hiển thị game over menu, không update game logic
             if (showGameOverMenu)
             {
                 return;
             }
-            
+
             if (!gameState.GameStarted)
             {
                 return;
             }
-            
+
             gameState.UpdateDifficulty();
-            
+
             UpdateBirdPhysics(gameState);
             UpdatePipes(gameState);
             CheckCollision(gameState);
-            
+
             // Kiểm tra game over và hiển thị menu thay vì thoát ngay
             if (gameState.GameOver && !showGameOverMenu)
             {
                 showGameOverMenu = true;
                 gameOverSelectedIndex = 0; // Reset về "Chơi lại"
+                gameOverTime = DateTime.Now; // Ghi lại thời gian game over
             }
         }
-        
+
         public override void Render()
         {
             // Nếu đang hiển thị game over menu
             if (showGameOverMenu)
             {
-                RenderGameOverMenu();
+                // Cho phép người chơi nhìn thấy kết quả một chút trước khi hiển thị menu
+                if (DateTime.Now - gameOverTime > TimeSpan.FromMilliseconds(800))
+                {
+                    RenderGameOverMenu();
+                }
+                else
+                {
+                    // Hiển thị game state hiện tại với overlay "GAME OVER"
+                    GameRenderer.Draw(gameState);
+
+                    // Hiển thị text "GAME OVER" nổi bật
+                    Console.SetCursorPosition(GameState.GameWidth / 2 - 5, GameState.GameHeight / 2);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.BackgroundColor = ConsoleColor.Black;
+                    Console.Write(" GAME OVER! ");
+                    Console.ResetColor();
+                }
                 return;
             }
-            
+
             // Sử dụng renderer mới với thiết kế nhất quán nếu cần full redraw
             if (gameState.ForceFullRedraw)
             {
@@ -118,38 +136,44 @@ namespace FlappyBird.Game.Modes
                 GameRenderer.Draw(gameState);
             }
         }
-        
+
         public override void HandleInput(ConsoleKeyInfo keyInfo)
         {
-            // Xử lý input cho game over menu
+            // Xử lý input cho game over menu (chỉ sau khi delay)
             if (showGameOverMenu)
             {
-                HandleGameOverMenuInput(keyInfo);
+                // Chỉ cho phép input sau khi delay để người chơi thấy kết quả
+                if (DateTime.Now - gameOverTime > TimeSpan.FromMilliseconds(800))
+                {
+                    HandleGameOverMenuInput(keyInfo);
+                }
                 return;
             }
-            
+
             switch (keyInfo.Key)
             {
                 case ConsoleKey.Spacebar:
                     Jump(gameState);
                     break;
-                    
+
                 case ConsoleKey.Escape:
                     shouldExit = true;
                     break;
             }
         }
-        
+
         public override bool IsGameOver()
         {
-            return gameState.GameOver || shouldExit;
+            // Game chỉ kết thúc khi người chơi chọn thoát (shouldExit = true)
+            // Không kết thúc khi gameState.GameOver = true vì lúc đó chúng ta đang hiển thị game over menu
+            return shouldExit;
         }
-        
+
         public GameState GetGameState()
         {
             return gameState;
         }
-        
+
         protected new void CheckCollision(GameState gameState)
         {
             foreach (var pipe in gameState.Pipes)
@@ -163,23 +187,23 @@ namespace FlappyBird.Game.Modes
                     }
                 }
             }
-            
+
             if (gameState.BirdY <= 0 || gameState.BirdY >= GameState.GameHeight - 1)
             {
                 gameState.GameOver = true;
             }
         }
-        
+
         protected new void Jump(GameState gameState)
         {
             if (!gameState.GameStarted)
             {
                 gameState.GameStarted = true;
             }
-            
+
             gameState.BirdVelocity = GameState.JumpStrength;
         }
-        
+
         /// <summary>
         /// Render game over menu với thiết kế đẹp
         /// </summary>
@@ -187,17 +211,17 @@ namespace FlappyBird.Game.Modes
         {
             // Vẽ game hiện tại để người chơi thấy kết quả
             GameRenderer.Draw(gameState);
-            
+
             // Overlay game over menu
             Console.SetCursorPosition(0, GameState.GameHeight + 4);
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                         GAME OVER!                            ║");
+            Console.WriteLine("║                          GAME OVER!                            ║");
             Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
-            Console.WriteLine($"║                      Score: {gameState.Score,3} diem                        ║");
-            Console.WriteLine($"║                      Level: {gameState.DifficultyLevel,3}                             ║");
+            Console.WriteLine($"║                      Score: {gameState.Score,3} diem                           ║");
+            Console.WriteLine($"║                      Level: {gameState.DifficultyLevel,3}                                ║");
             Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
-            
+
             // Menu options
             for (int i = 0; i < gameOverOptions.Length; i++)
             {
@@ -205,23 +229,23 @@ namespace FlappyBird.Game.Modes
                 {
                     Console.ForegroundColor = ConsoleColor.Black;
                     Console.BackgroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"║  > {gameOverOptions[i],-58} ║");
+                    Console.WriteLine($"║  > {gameOverOptions[i],-58}  ║");
                     Console.ResetColor();
                 }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine($"║    {gameOverOptions[i],-58} ║");
+                    Console.WriteLine($"║    {gameOverOptions[i],-58}  ║");
                 }
             }
-            
+
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
             Console.WriteLine("║    Up/Down: Chon    Enter: Xac nhan    Space: Choi lai         ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
         }
-        
+
         /// <summary>
         /// Xử lý input cho game over menu
         /// </summary>
@@ -232,11 +256,11 @@ namespace FlappyBird.Game.Modes
                 case ConsoleKey.UpArrow:
                     gameOverSelectedIndex = gameOverSelectedIndex > 0 ? gameOverSelectedIndex - 1 : gameOverOptions.Length - 1;
                     break;
-                    
+
                 case ConsoleKey.DownArrow:
                     gameOverSelectedIndex = gameOverSelectedIndex < gameOverOptions.Length - 1 ? gameOverSelectedIndex + 1 : 0;
                     break;
-                    
+
                 case ConsoleKey.Enter:
                     if (gameOverSelectedIndex == 0)
                     {
@@ -249,19 +273,19 @@ namespace FlappyBird.Game.Modes
                         shouldExit = true;
                     }
                     break;
-                    
+
                 case ConsoleKey.Spacebar:
                     // Shortcut để restart nhanh
                     RestartGame();
                     break;
-                    
+
                 case ConsoleKey.Escape:
                     // Thoát
                     shouldExit = true;
                     break;
             }
         }
-        
+
         /// <summary>
         /// Restart game với cùng cài đặt
         /// </summary>
@@ -269,10 +293,10 @@ namespace FlappyBird.Game.Modes
         {
             showGameOverMenu = false;
             gameState.Reset();
-            
+
             // Khởi tạo lại game với border dimensions chính xác
             InitializeGameWithMenuConsistentBorders();
-            
+
             // Force full redraw
             gameState.ForceFullRedraw = true;
         }
