@@ -1,4 +1,4 @@
-// Simple Menu System
+// Simple Menu System - Optimized Anti-Flicker
 using FlappyBird.Enum;
 
 namespace FlappyBird.UI
@@ -6,6 +6,10 @@ namespace FlappyBird.UI
     public static class SimpleMenuSystem
     {
         private static int selectedIndex = 0;
+        private static int previousSelectedIndex = -1; // Track previous selection for optimized rendering
+        private static bool isFirstRender = true; // Track if this is the first render
+        private static bool forceFullRedraw = false; // Force full redraw when returning from game
+
         private static readonly string[] menuItems = [
         "   NGƯỜI CHƠI",
         "       Chơi đơn",
@@ -50,22 +54,41 @@ namespace FlappyBird.UI
             selectedIndex = GetFirstSelectableIndex();
             ConsoleKeyInfo keyInfo;
 
+            // Vẽ menu lần đầu hoàn toàn hoặc khi force redraw
+            if (isFirstRender || forceFullRedraw)
+            {
+                DrawMenuComplete();
+                isFirstRender = false;
+                forceFullRedraw = false; // Reset flag after redraw
+            }
+
             do
             {
-                DrawMenu();
                 keyInfo = Console.ReadKey(true);
 
                 switch (keyInfo.Key)
                 {
                     case ConsoleKey.UpArrow:
+                        previousSelectedIndex = selectedIndex;
                         MoveToPreviousSelectableItem();
+                        if (previousSelectedIndex != selectedIndex)
+                        {
+                            UpdateMenuSelection(); // Chỉ cập nhật 2 dòng thay đổi
+                        }
                         break;
                     case ConsoleKey.DownArrow:
+                        previousSelectedIndex = selectedIndex;
                         MoveToNextSelectableItem();
+                        if (previousSelectedIndex != selectedIndex)
+                        {
+                            UpdateMenuSelection(); // Chỉ cập nhật 2 dòng thay đổi
+                        }
                         break;
                     case ConsoleKey.Enter:
                         if (selectableItems[selectedIndex])
                         {
+                            // Set flag để redraw khi quay lại menu
+                            forceFullRedraw = true;
                             return menuActions[selectedIndex];
                         }
                         break;
@@ -156,6 +179,69 @@ namespace FlappyBird.UI
             Console.WriteLine("│    ESC         : Thoát                                         │");
             Console.WriteLine("└────────────────────────────────────────────────────────────────┘");
             Console.ResetColor();
+        }
+
+        /// <summary>
+        /// Vẽ menu hoàn chỉnh lần đầu - bao gồm cả description update
+        /// </summary>
+        private static void DrawMenuComplete()
+        {
+            DrawMenu();
+        }
+
+        // Tính vị trí dòng menu trong console - FIXED calculation
+        static int GetMenuLinePosition(int menuIndex)
+        {
+            int linePos = 23; // Dòng đầu tiên của menu items (sau menu separator ╠══╣)
+            int actualIndex = 0;
+            for (int i = 0; i < menuIndex; i++) // Fix: i < menuIndex instead of i <= menuIndex
+            {
+                actualIndex++; // Mỗi item (dù empty hay không) đều chiếm 1 dòng
+            }
+            return linePos + actualIndex;
+        }
+
+        /// <summary>
+        /// Chỉ cập nhật 2 dòng menu đã thay đổi và description - Tối ưu anti-flicker
+        /// </summary>
+        private static void UpdateMenuSelection()
+        {
+            // Ẩn cursor để tránh nhấp nháy
+            Console.CursorVisible = false;
+
+            // Cập nhật description trước
+            Console.SetCursorPosition(6, 18); // Vị trí sau "INFO: " ở dòng 18
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            string description = GetMenuDescription(selectedIndex);
+            Console.Write(description.PadRight(58)); // Pad để xóa text cũ
+            Console.ResetColor();
+
+            // Cập nhật dòng cũ (bỏ highlight)
+            if (previousSelectedIndex >= 0 && selectableItems[previousSelectedIndex])
+            {
+                int oldLineY = GetMenuLinePosition(previousSelectedIndex);
+                Console.SetCursorPosition(0, oldLineY);
+
+                string prefix = "║  ";
+                Console.ForegroundColor = GetMenuItemColor(previousSelectedIndex);
+                Console.Write(prefix + "  " + menuItems[previousSelectedIndex]);
+                Console.ResetColor();
+                Console.Write(new string(' ', 60 - menuItems[previousSelectedIndex].Length) + "║");
+            }
+
+            // Cập nhật dòng mới (thêm highlight)
+            if (selectableItems[selectedIndex])
+            {
+                int newLineY = GetMenuLinePosition(selectedIndex);
+                Console.SetCursorPosition(0, newLineY);
+
+                string prefix = "║  ";
+                Console.ForegroundColor = ConsoleColor.Black;
+                Console.BackgroundColor = ConsoleColor.Yellow;
+                Console.Write(prefix + "► " + menuItems[selectedIndex]);
+                Console.ResetColor();
+                Console.Write(new string(' ', 60 - menuItems[selectedIndex].Length) + "║");
+            }
         }
 
         private static ConsoleColor GetMenuItemColor(int index)
