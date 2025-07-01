@@ -6,7 +6,7 @@ namespace FlappyBird.UI
     public static class SimpleMenuSystem
     {
         private static int selectedIndex = 0;
-        private static readonly string[] menuItems = {
+        private static readonly string[] menuItems = [
         "   NGƯỜI CHƠI",
         "       Chơi đơn",
         "       Chơi đôi",
@@ -17,9 +17,9 @@ namespace FlappyBird.UI
         "       AI Tournament",
         "",
         "   Thoát"
-    };
+    ];
 
-        private static readonly MenuAction[] menuActions = {
+        private static readonly MenuAction[] menuActions = [
         MenuAction.None,        // Header
         MenuAction.SinglePlayer,
         MenuAction.TwoPlayer,
@@ -30,9 +30,9 @@ namespace FlappyBird.UI
         MenuAction.AITournament,
         MenuAction.None,        // Spacer
         MenuAction.Exit
-    };
+    ];
 
-        private static readonly bool[] selectableItems = {
+        private static readonly bool[] selectableItems = [
         false,  // Header
         true,   // Chơi đơn
         true,   // Chơi đôi
@@ -43,7 +43,7 @@ namespace FlappyBird.UI
         true,   // Tournament
         false,  // Spacer
         true    // Thoát
-    };
+    ];
 
         public static MenuAction ShowMenu()
         {

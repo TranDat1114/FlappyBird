@@ -27,6 +27,11 @@ namespace FlappyBird.Game.Modes
         private bool bufferInitialized = false;
         private bool firstRender = true; // Track first render to clear screen
         
+        // === COUNTDOWN STATE ===
+        private bool isCountingDown = false;
+        private int countdownValue = 3;
+        private DateTime countdownStartTime;
+        
         // === CONSTRUCTOR ===
         public TwoPlayerGameMode()
         {
@@ -113,7 +118,7 @@ namespace FlappyBird.Game.Modes
         // === GAME OVER MENU STATE ===
         private bool showGameOverMenu = false;
         private int gameOverSelectedIndex = 0; // 0: Chơi lại, 1: Về menu chính
-        private readonly string[] gameOverOptions = { "Choi lai", "Ve menu chinh" };
+        private readonly string[] gameOverOptions = ["Choi lai", "Ve menu chinh"];
         private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
         
         public override void Initialize()
@@ -165,6 +170,24 @@ namespace FlappyBird.Game.Modes
         
         public override void Update()
         {
+            // Xử lý countdown trước khi bắt đầu game
+            if (isCountingDown)
+            {
+                int elapsed = (int)(DateTime.Now - countdownStartTime).TotalSeconds;
+                int newCountdown = 3 - elapsed;
+                if (newCountdown != countdownValue)
+                {
+                    countdownValue = newCountdown;
+                }
+                if (countdownValue <= 0)
+                {
+                    isCountingDown = false;
+                    gameStarted = true;
+                    player1State.GameStarted = true;
+                    player2State.GameStarted = true;
+                }
+                return;
+            }
             if (!gameStarted) return;
             
             // Update both players
@@ -201,16 +224,13 @@ namespace FlappyBird.Game.Modes
                 Console.SetCursorPosition(0, 0);
                 firstRender = false;
             }
-            
             // Initialize buffers if needed
             if (!bufferInitialized)
             {
                 InitializeBuffers();
             }
-            
             // Clear current buffer for new frame
             ClearCurrentBuffer();
-            
             // Nếu đang hiển thị game over menu - tương tự SinglePlayerGameMode
             if (showGameOverMenu)
             {
@@ -226,15 +246,22 @@ namespace FlappyBird.Game.Modes
                     RenderGameOverOverlayToBuffer();
                 }
             }
+            else if (isCountingDown)
+            {
+                // Render hai màn hình như bình thường
+                RenderDualStackedScreensToBuffer();
+                // Hiển thị số countdown lớn ở giữa mỗi màn hình player
+                RenderCountdownOverlayToBuffer();
+                // Render footer
+                RenderDualPlayerFooterToBuffer();
+            }
             else
             {
                 // Render dual stacked screens với thiết kế nhất quán
                 RenderDualStackedScreensToBuffer();
-                
                 // Render footer với thông tin cả hai player
                 RenderDualPlayerFooterToBuffer();
             }
-            
             // Flush buffer to console - only changed characters
             FlushBufferToConsole();
         }
@@ -379,7 +406,7 @@ namespace FlappyBird.Game.Modes
             WriteToBuffer(menuStartX + menuWidth - 1, menuStartY, '╗', ConsoleColor.White);
             
             // Menu content
-            string[] menuLines = {
+            string[] menuLines = [
                 "",
                 "           GAME OVER",
                 "",
@@ -388,7 +415,7 @@ namespace FlappyBird.Game.Modes
                 "",
                 "    Choi lai",
                 "    Ve menu chinh"
-            };
+            ];
             
             for (int line = 0; line < menuLines.Length && line < menuHeight - 2; line++)
             {
@@ -562,31 +589,32 @@ namespace FlappyBird.Game.Modes
                 return;
             }
             
+            // Nếu đang đếm ngược thì không nhận input khác
+            if (isCountingDown)
+                return;
+            
             switch (keyInfo.Key)
             {
                 case ConsoleKey.Spacebar:
-                    if (!gameStarted)
+                    if (!gameStarted && !isCountingDown)
                     {
-                        gameStarted = true;
-                        player1State.GameStarted = true;
-                        player2State.GameStarted = true;
+                        isCountingDown = true;
+                        countdownValue = 3;
+                        countdownStartTime = DateTime.Now;
                     }
                     break;
-                    
                 case ConsoleKey.W:
                     if (gameStarted && !player1State.GameOver)
                     {
                         Jump(player1State);
                     }
                     break;
-                    
                 case ConsoleKey.UpArrow:
                     if (gameStarted && !player2State.GameOver)
                     {
                         Jump(player2State);
                     }
                     break;
-                    
                 case ConsoleKey.Escape:
                     shouldExit = true;
                     break;
@@ -698,6 +726,98 @@ namespace FlappyBird.Game.Modes
                 return "PLAYER 1";
             
             return "DANG CHOI";
+        }
+
+        /// <summary>
+        /// Hiển thị hiệu ứng countdown đặc biệt ở giữa mỗi màn hình player (giống đua xe)
+        /// </summary>
+        private void RenderCountdownOverlayToBuffer()
+        {
+            // Tính vị trí trung tâm cho mỗi player
+            int centerX = MENU_BORDER_WIDTH / 2;
+            int centerY1 = PLAYER_SCREEN_HEIGHT / 2 + 1;
+            int centerY2 = PLAYER_SCREEN_HEIGHT + (PLAYER_SCREEN_HEIGHT / 2) + 1;
+
+            // Hiệu ứng số lớn
+            string[] bigNumbers = new string[4];
+            ConsoleColor color = ConsoleColor.Yellow;
+            // bool blink = false;
+            string display = countdownValue > 0 ? countdownValue.ToString() : "GO!";
+
+            if (countdownValue == 3)
+            {
+                bigNumbers = [
+                    "  █████  ",
+                    " ██   ██ ",
+                    "      ██ ",
+                    "    ███   ",
+                    "      ██  ",
+                    " ██   ██ ",
+                    "  █████  "
+                ];
+                color = ConsoleColor.Yellow;
+            }
+            else if (countdownValue == 2)
+            {
+                bigNumbers = [
+                    "  █████  ",
+                    " ██   ██ ",
+                    "      ██ ",
+                    "   ███   ",
+                    "  ██     ",
+                    " ██      ",
+                    " ███████ "
+                ];
+                color = ConsoleColor.Yellow;
+            }
+            else if (countdownValue == 1)
+            {
+                bigNumbers = [
+                    "    ██   ",
+                    "   ███   ",
+                    "  ████   ",
+                    "    ██   ",
+                    "    ██   ",
+                    "    ██   ",
+                    "  ██████ "
+                ];
+                // Nhấp nháy đỏ vàng
+                color = (DateTime.Now.Millisecond < 500) ? ConsoleColor.Red : ConsoleColor.Yellow;
+                // blink = true;
+            }
+            else // GO!
+            {
+                bigNumbers = [
+                    "  █████   ██████  ",
+                    " ██   ██ ██    ██ ",
+                    " ██   ██ ██    ██ ",
+                    " ██   ██ ██    ██ ",
+                    " ██   ██ ██    ██ ",
+                    " ██   ██ ██    ██ ",
+                    "  █████   ██████  "
+                ];
+                color = ConsoleColor.Green;
+            }
+
+            // Vẽ cho cả 2 player
+            void DrawBigNumber(int centerY)
+            {
+                int startY = centerY - bigNumbers.Length / 2;
+                int startX = centerX - bigNumbers[0].Length / 2;
+                for (int row = 0; row < bigNumbers.Length; row++)
+                {
+                    for (int col = 0; col < bigNumbers[row].Length; col++)
+                    {
+                        char ch = bigNumbers[row][col];
+                        if (ch != ' ')
+                        {
+                            WriteToBuffer(startX + col, startY + row, ch, color);
+                        }
+                    }
+                }
+            }
+            DrawBigNumber(centerY1);
+            DrawBigNumber(centerY2);
         }
     }
 }
