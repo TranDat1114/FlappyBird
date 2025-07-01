@@ -1,4 +1,6 @@
 using System;
+using FlappyBird.Audio;
+using FlappyBird.Audio.Enum;
 using FlappyBird.Models;
 
 namespace FlappyBird.Game.Modes.SinglePlayer
@@ -6,7 +8,7 @@ namespace FlappyBird.Game.Modes.SinglePlayer
     /// <summary>
     /// Quản lý Game Over Menu cho Single Player Mode
     /// </summary>
-    public class SinglePlayerGameOverMenu
+    public class SinglePlayerGameOverMenu(SinglePlayerRenderer renderer)
     {
         // === GAME OVER MENU STATE ===
         private bool showGameOverMenu = false;
@@ -14,12 +16,7 @@ namespace FlappyBird.Game.Modes.SinglePlayer
         private readonly string[] gameOverOptions = ["Choi lai", "Ve menu chinh"];
         private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
 
-        private readonly SinglePlayerRenderer renderer;
-
-        public SinglePlayerGameOverMenu(SinglePlayerRenderer renderer)
-        {
-            this.renderer = renderer;
-        }
+        private readonly SinglePlayerRenderer renderer = renderer;
 
         // === PROPERTIES ===
         public bool ShowGameOverMenu => showGameOverMenu;

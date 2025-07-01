@@ -6,16 +6,10 @@ namespace FlappyBird.Game.Modes.TwoPlayer
     /// <summary>
     /// Xử lý input cho TwoPlayerGameMode
     /// </summary>
-    public class TwoPlayerInputHandler
+    public class TwoPlayerInputHandler(TwoPlayerGameOverMenu gameOverMenu, TwoPlayerCountdown countdown)
     {
-        private readonly TwoPlayerGameOverMenu gameOverMenu;
-        private readonly TwoPlayerCountdown countdown;
-
-        public TwoPlayerInputHandler(TwoPlayerGameOverMenu gameOverMenu, TwoPlayerCountdown countdown)
-        {
-            this.gameOverMenu = gameOverMenu;
-            this.countdown = countdown;
-        }
+        private readonly TwoPlayerGameOverMenu gameOverMenu = gameOverMenu;
+        private readonly TwoPlayerCountdown countdown = countdown;
 
         /// <summary>
         /// Xử lý input chính cho two player mode

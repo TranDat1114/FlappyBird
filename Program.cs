@@ -1,4 +1,6 @@
 ﻿using System;
+using FlappyBird.Audio;
+using FlappyBird.Audio.Song;
 using FlappyBird.Enum;
 using FlappyBird.Game;
 using FlappyBird.UI;
@@ -24,6 +26,8 @@ class FlappyBirdGame
                 // Ignore if we can't set window size
             }
         }
+
+        AudioManager.StartBackgroundMusic(HarryPotter.Melody);
 
         // Main menu loop
         while (true)
@@ -53,12 +57,9 @@ class FlappyBirdGame
                     break;
 
                 case MenuAction.Exit:
-                    // Console.Clear();
-                    // Console.SetCursorPosition(0, 10);
-                    // Console.ForegroundColor = ConsoleColor.Yellow;
-                    // Console.WriteLine("*** Cam on ban da choi Flappy Bird Game! ***");
-                    // Console.WriteLine("*** Hen gap lai! ***");
+                    AudioManager.StopAllSounds();
                     Console.ResetColor();
+                    Console.Clear();
                     return;
             }
         }

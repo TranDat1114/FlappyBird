@@ -13,24 +13,15 @@ namespace FlappyBird.Game.Modes
         private int currentMatch = 0;
         private bool tournamentStarted = false;
         
-        public class TournamentAI
+        public class TournamentAI(string name, string strategy)
         {
-            public string Name { get; set; }
-            public string Strategy { get; set; }
-            public int Wins { get; set; }
-            public int TotalScore { get; set; }
-            public GameState State { get; set; }
-            
-            public TournamentAI(string name, string strategy)
-            {
-                Name = name;
-                Strategy = strategy;
-                Wins = 0;
-                TotalScore = 0;
-                State = new GameState();
-            }
+            public string Name { get; set; } = name;
+            public string Strategy { get; set; } = strategy;
+            public int Wins { get; set; } = 0;
+            public int TotalScore { get; set; } = 0;
+            public GameState State { get; set; } = new GameState();
         }
-        
+
         public override void Initialize()
         {
             participants = new List<TournamentAI>

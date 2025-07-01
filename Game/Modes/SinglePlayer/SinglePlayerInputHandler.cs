@@ -6,14 +6,9 @@ namespace FlappyBird.Game.Modes.SinglePlayer
     /// <summary>
     /// Xử lý input cho Single Player Mode
     /// </summary>
-    public class SinglePlayerInputHandler
+    public class SinglePlayerInputHandler(SinglePlayerGameOverMenu gameOverMenu)
     {
-        private readonly SinglePlayerGameOverMenu gameOverMenu;
-
-        public SinglePlayerInputHandler(SinglePlayerGameOverMenu gameOverMenu)
-        {
-            this.gameOverMenu = gameOverMenu;
-        }
+        private readonly SinglePlayerGameOverMenu gameOverMenu = gameOverMenu;
 
         /// <summary>
         /// Xử lý input chính cho Single Player

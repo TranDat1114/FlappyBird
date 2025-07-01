@@ -6,22 +6,17 @@ namespace FlappyBird.Game.Modes.TwoPlayer
     /// <summary>
     /// Xử lý Game Over menu cho TwoPlayerGameMode
     /// </summary>
-    public class TwoPlayerGameOverMenu
+    public class TwoPlayerGameOverMenu(TwoPlayerBuffer buffer)
     {
         private bool showGameOverMenu = false;
         private int gameOverSelectedIndex = 0; // 0: Chơi lại, 1: Về menu chính
         private readonly string[] gameOverOptions = ["Choi lai", "Ve menu chinh"];
         private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
 
-        private readonly TwoPlayerBuffer buffer;
+        private readonly TwoPlayerBuffer buffer = buffer;
 
         public bool ShowGameOverMenu => showGameOverMenu;
         public DateTime GameOverTime => gameOverTime;
-
-        public TwoPlayerGameOverMenu(TwoPlayerBuffer buffer)
-        {
-            this.buffer = buffer;
-        }
 
         /// <summary>
         /// Bắt đầu hiển thị game over menu

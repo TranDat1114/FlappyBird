@@ -3,6 +3,8 @@ using FlappyBird.AI;
 using FlappyBird.Models;
 using FlappyBird.Utils;
 using FlappyBird.Game.Modes.SinglePlayer;
+using FlappyBird.Audio;
+using FlappyBird.Audio.Enum;
 
 namespace FlappyBird.Game.Modes
 {
@@ -118,6 +120,7 @@ namespace FlappyBird.Game.Modes
 
             if (inputResult.ShouldJump)
             {
+
                 Jump(gameState);
             }
         }
@@ -142,6 +145,7 @@ namespace FlappyBird.Game.Modes
                 {
                     if (gameState.BirdY <= pipe.TopHeight || gameState.BirdY >= GameState.GameHeight - pipe.BottomHeight - 1)
                     {
+                        AudioManager.PlaySoundEffect(SoundEffect.GameOver);
                         gameState.GameOver = true;
                         return;
                     }
@@ -150,6 +154,7 @@ namespace FlappyBird.Game.Modes
 
             if (gameState.BirdY <= 0 || gameState.BirdY >= GameState.GameHeight - 1)
             {
+                AudioManager.PlaySoundEffect(SoundEffect.GameOver);
                 gameState.GameOver = true;
             }
         }
@@ -160,7 +165,7 @@ namespace FlappyBird.Game.Modes
             {
                 gameState.GameStarted = true;
             }
-
+            AudioManager.PlaySoundEffect(SoundEffect.Jump);
             gameState.BirdVelocity = GameState.JumpStrength;
         }
 

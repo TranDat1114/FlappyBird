@@ -6,7 +6,7 @@ namespace FlappyBird.Game.Modes.TwoPlayer
     /// <summary>
     /// Xử lý rendering cho TwoPlayerGameMode
     /// </summary>
-    public class TwoPlayerRenderer
+    public class TwoPlayerRenderer(TwoPlayerBuffer buffer)
     {
         // === CONSTANTS ===
         private const int MENU_BORDER_WIDTH = 66;
@@ -15,12 +15,7 @@ namespace FlappyBird.Game.Modes.TwoPlayer
         private const int FOOTER_HEIGHT = 6;
         private const int TOTAL_DISPLAY_HEIGHT = 36;
 
-        private readonly TwoPlayerBuffer buffer;
-
-        public TwoPlayerRenderer(TwoPlayerBuffer buffer)
-        {
-            this.buffer = buffer;
-        }
+        private readonly TwoPlayerBuffer buffer = buffer;
 
         /// <summary>
         /// Render hai màn hình game xếp chồng vào buffer - tối ưu cho anti-flicker
