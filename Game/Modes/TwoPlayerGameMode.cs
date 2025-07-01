@@ -15,9 +15,9 @@ namespace FlappyBird.Game.Modes
         
         // === MENU CONSISTENCY CONSTANTS ===
         private const int MENU_BORDER_WIDTH = 66;  // Khớp chính xác với menu border
-        private const int GAME_DISPLAY_HEIGHT = 10; // Chiều cao vùng game cho mỗi player (giảm để fit console buffer)
-        private const int PLAYER_SCREEN_HEIGHT = 13; // Chiều cao mỗi màn hình player (bao gồm border) 
-        private const int TOTAL_DISPLAY_HEIGHT = 28; // Tổng chiều cao display
+        private const int GAME_DISPLAY_HEIGHT = 11; // Mỗi player 11 dòng (giống chia đôi SinglePlayer)
+        private const int PLAYER_SCREEN_HEIGHT = 13; // Header (1) + Info (1) + Border (1) + Game (11) + Border (1) = 13
+        private const int TOTAL_DISPLAY_HEIGHT = 30; // 2 player + footer (4 dòng)
         
         // === DOUBLE BUFFERING FOR ANTI-FLICKER ===
         private char[,] previousBuffer = new char[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
@@ -252,90 +252,50 @@ namespace FlappyBird.Game.Modes
         }
         
         /// <summary>
-        /// Render một màn hình player vào buffer tại vị trí chỉ định
+        /// Render một màn hình player vào buffer tại vị trí chỉ định (giống SinglePlayer)
         /// </summary>
         private void RenderPlayerScreenToBuffer(GameState playerState, string playerName, int startY)
         {
-            // Header với tên player - dùng GameRenderer border characters
+            // Header
             WriteToBuffer(0, startY, '╔', ConsoleColor.Cyan);
             for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
-            {
                 WriteToBuffer(i, startY, '═', ConsoleColor.Cyan);
-            }
             WriteToBuffer(MENU_BORDER_WIDTH - 1, startY, '╗', ConsoleColor.Cyan);
-            
-            // Header text line
-            string headerText = $" {playerName} - Score: {playerState.Score}";
-            if (playerState.GameOver)
-            {
-                headerText += " (GAME OVER)";
-            }
-            
+            // Info line
+            string info = $" {playerName} | Score: {playerState.Score} {(playerState.GameOver ? "(GAME OVER)" : "")}";
             WriteToBuffer(0, startY + 1, '║', ConsoleColor.Cyan);
-            for (int i = 0; i < headerText.Length && i < MENU_BORDER_WIDTH - 2; i++)
-            {
-                WriteToBuffer(i + 1, startY + 1, headerText[i], ConsoleColor.White);
-            }
-            for (int i = headerText.Length + 1; i < MENU_BORDER_WIDTH - 1; i++)
-            {
+            for (int i = 0; i < info.Length && i < MENU_BORDER_WIDTH - 2; i++)
+                WriteToBuffer(i + 1, startY + 1, info[i], ConsoleColor.White);
+            for (int i = info.Length + 1; i < MENU_BORDER_WIDTH - 1; i++)
                 WriteToBuffer(i, startY + 1, ' ', ConsoleColor.White);
-            }
             WriteToBuffer(MENU_BORDER_WIDTH - 1, startY + 1, '║', ConsoleColor.Cyan);
-            
-            // Middle border
+            // Border dưới info
             WriteToBuffer(0, startY + 2, '╠', ConsoleColor.Cyan);
             for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
-            {
                 WriteToBuffer(i, startY + 2, '═', ConsoleColor.Cyan);
-            }
             WriteToBuffer(MENU_BORDER_WIDTH - 1, startY + 2, '╣', ConsoleColor.Cyan);
-            
             // Game area
             char[,] screenBuffer = new char[GAME_DISPLAY_HEIGHT, GameState.GameWidth - 2];
-            
-            // Khởi tạo nền với pattern nhẹ
             for (int y = 0; y < GAME_DISPLAY_HEIGHT; y++)
-            {
                 for (int x = 0; x < GameState.GameWidth - 2; x++)
-                {
-                    if ((x + y) % 4 == 0)
-                    {
-                        screenBuffer[y, x] = '·';
-                    }
-                    else
-                    {
-                        screenBuffer[y, x] = ' ';
-                    }
-                }
-            }
-            
-            // Vẽ pipes vào buffer
+                    screenBuffer[y, x] = ((x + y) % 4 == 0) ? '·' : ' ';
             DrawPipesIntoBuffer(screenBuffer, playerState);
-            
-            // Vẽ bird vào buffer
             DrawBirdIntoBuffer(screenBuffer, playerState);
-            
-            // Transfer screen buffer to main buffer
             for (int y = 0; y < GAME_DISPLAY_HEIGHT; y++)
             {
                 WriteToBuffer(0, startY + 3 + y, '║', ConsoleColor.Cyan);
-                
                 for (int x = 0; x < GameState.GameWidth - 2; x++)
                 {
                     char ch = screenBuffer[y, x];
                     ConsoleColor color = GetCharColor(ch);
                     WriteToBuffer(x + 1, startY + 3 + y, ch, color);
                 }
-                
                 WriteToBuffer(MENU_BORDER_WIDTH - 1, startY + 3 + y, '║', ConsoleColor.Cyan);
             }
-            
             // Bottom border
             WriteToBuffer(0, startY + 3 + GAME_DISPLAY_HEIGHT, '╚', ConsoleColor.Cyan);
             for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
-            {
                 WriteToBuffer(i, startY + 3 + GAME_DISPLAY_HEIGHT, '═', ConsoleColor.Cyan);
-            }
             WriteToBuffer(MENU_BORDER_WIDTH - 1, startY + 3 + GAME_DISPLAY_HEIGHT, '╝', ConsoleColor.Cyan);
         }
         
@@ -369,37 +329,25 @@ namespace FlappyBird.Game.Modes
         }
 
         /// <summary>
-        /// Render footer với thông tin cả hai player vào buffer
+        /// Render footer với thông tin cả hai player vào buffer (giống SinglePlayer)
         /// </summary>
         private void RenderDualPlayerFooterToBuffer()
         {
-            int footerY = TOTAL_DISPLAY_HEIGHT - 3;
-            
-            if (!gameStarted)
-            {
-                // Hướng dẫn khi chưa bắt đầu
-                string startText = "Nhan [SPACE] de bat dau | Player 1: [W] | Player 2: [Up Arrow] | [ESC]: Menu";
-                for (int i = 0; i < startText.Length && i < MENU_BORDER_WIDTH; i++)
-                {
-                    WriteToBuffer(i, footerY, startText[i], ConsoleColor.Yellow);
-                }
-            }
-            else
-            {
-                // Player controls info khi đang chơi
-                string controlsText = "Player 1: [W] bay | Player 2: [Up Arrow] bay | [ESC]: Thoat";
-                for (int i = 0; i < controlsText.Length && i < MENU_BORDER_WIDTH; i++)
-                {
-                    WriteToBuffer(i, footerY, controlsText[i], ConsoleColor.Gray);
-                }
-                
-                // Status line
-                string statusText = $"P1: {player1State.Score} diem ({(player1State.GameOver ? "THUA" : "SONG")}) | P2: {player2State.Score} diem ({(player2State.GameOver ? "THUA" : "SONG")})";
-                for (int i = 0; i < statusText.Length && i < MENU_BORDER_WIDTH; i++)
-                {
-                    WriteToBuffer(i, footerY + 1, statusText[i], ConsoleColor.White);
-                }
-            }
+            int footerY = TOTAL_DISPLAY_HEIGHT - 4;
+            // Footer border
+            for (int i = 0; i < MENU_BORDER_WIDTH; i++)
+                WriteToBuffer(i, footerY, '═', ConsoleColor.Cyan);
+            // Thông tin điểm số
+            string scoreLine = $"Player 1: {player1State.Score} {(player1State.GameOver ? "(THUA)" : "")} | Player 2: {player2State.Score} {(player2State.GameOver ? "(THUA)" : "")}";
+            for (int i = 0; i < scoreLine.Length && i < MENU_BORDER_WIDTH; i++)
+                WriteToBuffer(i, footerY + 1, scoreLine[i], ConsoleColor.White);
+            // Hướng dẫn controls
+            string controlsLine = "[W] Player 1 bay | [↑] Player 2 bay | [ESC] Thoát | [SPACE] Bắt đầu";
+            for (int i = 0; i < controlsLine.Length && i < MENU_BORDER_WIDTH; i++)
+                WriteToBuffer(i, footerY + 2, controlsLine[i], ConsoleColor.Gray);
+            // Footer border dưới
+            for (int i = 0; i < MENU_BORDER_WIDTH; i++)
+                WriteToBuffer(i, footerY + 3, '═', ConsoleColor.Cyan);
         }
 
         /// <summary>
