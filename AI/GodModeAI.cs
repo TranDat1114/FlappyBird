@@ -11,7 +11,7 @@ namespace FlappyBird.AI
     /// </summary>
     public static class GodModeAI
     {
-        private static List<SimplePattern> learnedPatterns = new List<SimplePattern>();
+        private static readonly List<SimplePattern> learnedPatterns = new();
         private static DateTime lastLearningUpdate = DateTime.MinValue;
         private static DateTime lastJumpTime = DateTime.MinValue;
         

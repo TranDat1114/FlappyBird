@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using FlappyBird.Models;
 using FlappyBird.Utils;
 
-namespace FlappyBird.Game
+namespace FlappyBird.Game.Modes.SinglePlayer
 {
     /// <summary>
-    /// Class xử lý việc render game lên console
+    /// Renderer chuyên dụng cho chế độ Single Player - Di chuyển từ GameRenderer
     /// </summary>
-    public static class GameRenderer
+    public class SinglePlayerRenderer
     {
         // ASCII Art Characters for better UI design
         private static readonly char BirdChar = '♦';           // Diamond bird character
@@ -24,7 +24,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Vẽ toàn bộ game với thiết kế khớp menu
         /// </summary>
-        public static void Draw(GameState gameState)
+        public void Draw(GameState gameState)
         {
             // Vẽ vào buffer thay vì trực tiếp ra console
             char[,] screen = new char[GameState.GameHeight, GameState.GameWidth];
@@ -65,7 +65,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Khởi tạo nền với pattern nhẹ
         /// </summary>
-        private static void InitializeBackground(char[,] screen)
+        private void InitializeBackground(char[,] screen)
         {
             for (int y = 0; y < GameState.GameHeight; y++)
             {
@@ -83,7 +83,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Vẽ viền game với thiết kế đẹp khớp với menu
         /// </summary>
-        private static void DrawGameBorders(char[,] screen)
+        private void DrawGameBorders(char[,] screen)
         {
             // Viền trên
             for (int x = 1; x < GameState.GameWidth - 1; x++)
@@ -111,7 +111,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Vẽ tất cả các ống
         /// </summary>
-        private static void DrawPipes(char[,] screen, List<Pipe> pipes)
+        private void DrawPipes(char[,] screen, List<Pipe> pipes)
         {
             foreach (var pipe in pipes)
             {
@@ -125,7 +125,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Vẽ một ống
         /// </summary>
-        private static void DrawSinglePipe(char[,] screen, Pipe pipe)
+        private void DrawSinglePipe(char[,] screen, Pipe pipe)
         {
             // Ống trên - vẽ với độ dày 3 pixel
             for (int y = 1; y <= pipe.TopHeight; y++)
@@ -184,7 +184,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Vẽ chim với animation
         /// </summary>
-        private static void DrawBird(char[,] screen, GameState gameState)
+        private void DrawBird(char[,] screen, GameState gameState)
         {
             if (GameState.BirdX >= 1 && GameState.BirdX < GameState.GameWidth - 1 && 
                 gameState.BirdY >= 1 && gameState.BirdY < GameState.GameHeight - 1)
@@ -224,7 +224,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Render tối ưu chỉ những pixel thay đổi
         /// </summary>
-        private static void RenderOptimized(char[,] newScreen, GameState gameState)
+        private void RenderOptimized(char[,] newScreen, GameState gameState)
         {
             // Batch các thay đổi để giảm số lần gọi SetCursorPosition
             var changes = new List<(int x, int y, char ch)>();
@@ -266,7 +266,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Render UI text - Simplified for optimization
         /// </summary>
-        private static void RenderUI(GameState gameState)
+        private void RenderUI(GameState gameState)
         {
             // Simple UI updates for optimized rendering
             // Full UI rendering handled by RenderWithConsistentDesign
@@ -291,7 +291,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Khởi tạo màn hình trống
         /// </summary>
-        public static void InitializeScreen(GameState gameState)
+        public void InitializeScreen(GameState gameState)
         {
             // Khởi tạo màn hình trống
             for (int y = 0; y < GameState.GameHeight; y++)
@@ -309,7 +309,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Render game với header và footer đẹp, khớp với thiết kế menu
         /// </summary>
-        public static void RenderWithConsistentDesign(GameState gameState)
+        public void RenderWithConsistentDesign(GameState gameState)
         {
             Console.Clear();
             
@@ -326,7 +326,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Render header cho game với thiết kế khớp menu
         /// </summary>
-        private static void RenderGameHeader()
+        private void RenderGameHeader()
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
@@ -338,7 +338,7 @@ namespace FlappyBird.Game
         /// <summary>
         /// Render footer cho game với thông tin trạng thái
         /// </summary>
-        private static void RenderGameFooter(GameState gameState)
+        private void RenderGameFooter(GameState gameState)
         {
             Console.SetCursorPosition(0, GameState.GameHeight + 4);
             Console.ForegroundColor = ConsoleColor.White;
@@ -359,6 +359,19 @@ namespace FlappyBird.Game
             
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+        }
+
+        /// <summary>
+        /// Render game over overlay - di chuyển từ SinglePlayerGameMode
+        /// </summary>
+        public void RenderGameOverOverlay()
+        {
+            // Hiển thị text "GAME OVER" nổi bật
+            Console.SetCursorPosition(GameState.GameWidth / 2 - 5, GameState.GameHeight / 2);
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.Write(" GAME OVER! ");
             Console.ResetColor();
         }
     }

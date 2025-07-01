@@ -9,10 +9,10 @@ namespace FlappyBird.Game.Modes
     /// </summary>
     public class DualAIGameMode : GameModeBase
     {
-        private GameState ai1State = new GameState();
-        private GameState ai2State = new GameState();
+        private readonly GameState ai1State = new();
+        private readonly GameState ai2State = new();
         private bool gameStarted = false;
-        private int testRounds = 10;
+        private readonly int testRounds = 10;
         private int currentRound = 1;
         private int ai1Wins = 0;
         private int ai2Wins = 0;

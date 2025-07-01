@@ -9,7 +9,7 @@ namespace FlappyBird.Game.Modes
     /// </summary>
     public class AITournamentGameMode : GameModeBase
     {
-        private List<TournamentAI> participants = new List<TournamentAI>();
+        private List<TournamentAI> participants = new();
         private int currentMatch = 0;
         private bool tournamentStarted = false;
         
@@ -35,10 +35,10 @@ namespace FlappyBird.Game.Modes
         {
             participants = new List<TournamentAI>
             {
-                new TournamentAI("Conservative AI", "Conservative"),
-                new TournamentAI("Aggressive AI", "Aggressive"),
-                new TournamentAI("Balanced AI", "Balanced"),
-                new TournamentAI("Learning AI", "Learning")
+                new("Conservative AI", "Conservative"),
+                new("Aggressive AI", "Aggressive"),
+                new("Balanced AI", "Balanced"),
+                new("Learning AI", "Learning")
             };
             
             currentMatch = 0;

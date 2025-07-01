@@ -9,8 +9,8 @@ namespace FlappyBird.Game.Modes
     /// </summary>
     public class SplitScreenAIGameMode : GameModeBase
     {
-        private GameState ai1State = new GameState();
-        private GameState ai2State = new GameState();
+        private readonly GameState ai1State = new();
+        private readonly GameState ai2State = new();
         private bool gameStarted = false;
         
         public override void Initialize()

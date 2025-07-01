@@ -9,7 +9,7 @@ namespace FlappyBird.Game
     public abstract class GameModeBase : IGameMode
     {
         protected bool shouldExit = false;
-        protected readonly Random Random = new Random();
+        protected readonly Random Random = new();
         
         public abstract void Initialize();
         public abstract void Update();
