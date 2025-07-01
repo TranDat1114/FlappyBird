@@ -181,8 +181,8 @@ namespace FlappyBird.UI
             return index switch
             {
                 0 => "Chế độ dành cho người chơi thật",
-                1 => "Chơi một mình với AI tự động (God Mode) hoặc thủ công",
-                2 => "Hai người chơi cùng lúc: W (Player 1) và ↑ (Player 2)",
+                1 => "Chinh phục trò chơi một mình",
+                2 => "Hai người chơi cùng lúc: [W] (Player 1) và [↑] (Player 2)",
                 4 => "Các chế độ huấn luyện và thử nghiệm AI",
                 5 => "So sánh hiệu suất giữa 2 AI khác nhau",
                 6 => "Xem 2 AI chơi cùng lúc trên màn hình chia đôi",

@@ -12,13 +12,14 @@ namespace FlappyBird.Game.Modes
         private GameState player1State = new GameState();
         private GameState player2State = new GameState();
         private bool gameStarted = false;
-        
+
         // === MENU CONSISTENCY CONSTANTS ===
         private const int MENU_BORDER_WIDTH = 66;  // Khớp chính xác với menu border
         private const int GAME_DISPLAY_HEIGHT = 11; // Mỗi player 11 dòng (giống chia đôi SinglePlayer)
-        private const int PLAYER_SCREEN_HEIGHT = 13; // Header (1) + Info (1) + Border (1) + Game (11) + Border (1) = 13
-        private const int TOTAL_DISPLAY_HEIGHT = 30; // 2 player + footer (4 dòng)
-        
+        private const int PLAYER_SCREEN_HEIGHT = 15; // Header (1) + Info (1) + Border (1) + Game (11) + Border (1) = 15
+        private const int FOOTER_HEIGHT = 6; // Chiều cao footer với 2 khung
+        private const int TOTAL_DISPLAY_HEIGHT = 36; // 2 player (30) + footer (6 dòng)
+
         // === DOUBLE BUFFERING FOR ANTI-FLICKER ===
         private char[,] previousBuffer = new char[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
         private char[,] currentBuffer = new char[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
@@ -26,18 +27,18 @@ namespace FlappyBird.Game.Modes
         private ConsoleColor[,] currentColorBuffer = new ConsoleColor[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
         private bool bufferInitialized = false;
         private bool firstRender = true; // Track first render to clear screen
-        
+
         // === COUNTDOWN STATE ===
         private bool isCountingDown = false;
         private int countdownValue = 3;
         private DateTime countdownStartTime;
-        
+
         // === CONSTRUCTOR ===
         public TwoPlayerGameMode()
         {
             InitializeBuffers();
         }
-        
+
         /// <summary>
         /// Initialize double buffering arrays to reduce flicker
         /// </summary>
@@ -47,7 +48,7 @@ namespace FlappyBird.Game.Modes
             currentBuffer = new char[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
             previousColorBuffer = new ConsoleColor[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
             currentColorBuffer = new ConsoleColor[TOTAL_DISPLAY_HEIGHT, MENU_BORDER_WIDTH];
-            
+
             // Initialize with spaces and default color
             for (int y = 0; y < TOTAL_DISPLAY_HEIGHT; y++)
             {
@@ -59,10 +60,10 @@ namespace FlappyBird.Game.Modes
                     currentColorBuffer[y, x] = ConsoleColor.White;
                 }
             }
-            
+
             bufferInitialized = true;
         }
-        
+
         /// <summary>
         /// Clear current buffer for next frame
         /// </summary>
@@ -77,7 +78,7 @@ namespace FlappyBird.Game.Modes
                 }
             }
         }
-        
+
         /// <summary>
         /// Write character to current buffer
         /// </summary>
@@ -89,7 +90,7 @@ namespace FlappyBird.Game.Modes
                 currentColorBuffer[y, x] = color;
             }
         }
-        
+
         /// <summary>
         /// Render buffer to console - only draw changed characters
         /// </summary>
@@ -99,13 +100,13 @@ namespace FlappyBird.Game.Modes
             {
                 for (int x = 0; x < MENU_BORDER_WIDTH; x++)
                 {
-                    if (currentBuffer[y, x] != previousBuffer[y, x] || 
+                    if (currentBuffer[y, x] != previousBuffer[y, x] ||
                         currentColorBuffer[y, x] != previousColorBuffer[y, x])
                     {
                         Console.SetCursorPosition(x, y);
                         Console.ForegroundColor = currentColorBuffer[y, x];
                         Console.Write(currentBuffer[y, x]);
-                        
+
                         // Update previous buffer
                         previousBuffer[y, x] = currentBuffer[y, x];
                         previousColorBuffer[y, x] = currentColorBuffer[y, x];
@@ -120,28 +121,28 @@ namespace FlappyBird.Game.Modes
         private int gameOverSelectedIndex = 0; // 0: Chơi lại, 1: Về menu chính
         private readonly string[] gameOverOptions = ["Choi lai", "Ve menu chinh"];
         private DateTime gameOverTime = DateTime.MinValue; // Thời gian bắt đầu game over
-        
+
         public override void Initialize()
         {
             // Validate menu consistency như SinglePlayerGameMode
             ValidateMenuConsistency();
-            
+
             player1State.Reset();
             player2State.Reset();
-            
+
             // Reset game over states
             showGameOverMenu = false;
             gameOverSelectedIndex = 0;
             gameOverTime = DateTime.MinValue;
-            
+
             // Initialize pipes cho cả hai players như SinglePlayerGameMode
             InitializeGameForPlayer(player1State);
             InitializeGameForPlayer(player2State);
-            
+
             gameStarted = false;
             firstRender = true; // Reset first render flag
         }
-        
+
         /// <summary>
         /// Validate rằng game dimensions khớp hoàn toàn với menu - tương tự SinglePlayerGameMode
         /// </summary>
@@ -152,22 +153,22 @@ namespace FlappyBird.Game.Modes
                 throw new InvalidOperationException($"Game width ({GameState.GameWidth}) không khớp với menu border width ({MENU_BORDER_WIDTH})");
             }
         }
-        
+
         /// <summary>
         /// Initialize game cho một player - dùng logic từ SinglePlayerGameMode
         /// </summary>
         private void InitializeGameForPlayer(GameState playerState)
         {
             playerState.Pipes.Clear();
-            
+
             // Tạo pipe đầu tiên với spacing phù hợp với border width
             int initialPipeX = GameState.GameWidth - 1;
             playerState.Pipes.Add(new Pipe(initialPipeX, GameState.BaseGapSize, GameState.GameHeight, Random));
-            
+
             // Set last pipe position để spacing đều đặn
             playerState.LastPipeX = initialPipeX;
         }
-        
+
         public override void Update()
         {
             // Xử lý countdown trước khi bắt đầu game
@@ -189,11 +190,11 @@ namespace FlappyBird.Game.Modes
                 return;
             }
             if (!gameStarted) return;
-            
+
             // Update both players
             UpdatePlayer(player1State);
             UpdatePlayer(player2State);
-            
+
             // Kiểm tra game over và hiển thị menu thay vì thoát ngay - như SinglePlayerGameMode
             if (AreBothPlayersGameOver() && !showGameOverMenu)
             {
@@ -202,19 +203,19 @@ namespace FlappyBird.Game.Modes
                 gameOverTime = DateTime.Now; // Ghi lại thời gian game over
             }
         }
-        
+
         private void UpdatePlayer(GameState playerState)
         {
             if (playerState.GameOver) return;
-            
+
             playerState.FrameCounter++;
             playerState.UpdateDifficulty();
-            
+
             UpdateBirdPhysics(playerState);
             UpdatePipes(playerState);
             CheckCollision(playerState);
         }
-        
+
         public override void Render()
         {
             // Clear screen completely on first render to remove previous menu
@@ -265,7 +266,7 @@ namespace FlappyBird.Game.Modes
             // Flush buffer to console - only changed characters
             FlushBufferToConsole();
         }
-        
+
         /// <summary>
         /// Render hai màn hình game xếp chồng vào buffer - tối ưu cho anti-flicker
         /// </summary>
@@ -273,11 +274,11 @@ namespace FlappyBird.Game.Modes
         {
             // === PLAYER 1 SCREEN ===
             RenderPlayerScreenToBuffer(player1State, "PLAYER 1", 0);
-            
+
             // === PLAYER 2 SCREEN ===  
             RenderPlayerScreenToBuffer(player2State, "PLAYER 2", PLAYER_SCREEN_HEIGHT);
         }
-        
+
         /// <summary>
         /// Render một màn hình player vào buffer tại vị trí chỉ định (giống SinglePlayer)
         /// </summary>
@@ -325,7 +326,7 @@ namespace FlappyBird.Game.Modes
                 WriteToBuffer(i, startY + 3 + GAME_DISPLAY_HEIGHT, '═', ConsoleColor.Cyan);
             WriteToBuffer(MENU_BORDER_WIDTH - 1, startY + 3 + GAME_DISPLAY_HEIGHT, '╝', ConsoleColor.Cyan);
         }
-        
+
         /// <summary>
         /// Get color for character - similar to SetCharColor but returns color instead of setting it
         /// </summary>
@@ -348,7 +349,7 @@ namespace FlappyBird.Game.Modes
             string gameOverText = " GAME OVER! ";
             int startX = GameState.GameWidth / 2 - gameOverText.Length / 2;
             int overlayY = PLAYER_SCREEN_HEIGHT;
-            
+
             for (int i = 0; i < gameOverText.Length; i++)
             {
                 WriteToBuffer(startX + i, overlayY, gameOverText[i], ConsoleColor.Red);
@@ -356,25 +357,58 @@ namespace FlappyBird.Game.Modes
         }
 
         /// <summary>
-        /// Render footer với thông tin cả hai player vào buffer (giống SinglePlayer)
+        /// Render footer với 2 khung riêng biệt cho điểm số và hướng dẫn
         /// </summary>
         private void RenderDualPlayerFooterToBuffer()
         {
-            int footerY = TOTAL_DISPLAY_HEIGHT - 4;
-            // Footer border
-            for (int i = 0; i < MENU_BORDER_WIDTH; i++)
-                WriteToBuffer(i, footerY, '═', ConsoleColor.Cyan);
-            // Thông tin điểm số
-            string scoreLine = $"Player 1: {player1State.Score} {(player1State.GameOver ? "(THUA)" : "")} | Player 2: {player2State.Score} {(player2State.GameOver ? "(THUA)" : "")}";
-            for (int i = 0; i < scoreLine.Length && i < MENU_BORDER_WIDTH; i++)
-                WriteToBuffer(i, footerY + 1, scoreLine[i], ConsoleColor.White);
-            // Hướng dẫn controls
-            string controlsLine = "[W] Player 1 bay | [↑] Player 2 bay | [ESC] Thoát | [SPACE] Bắt đầu";
-            for (int i = 0; i < controlsLine.Length && i < MENU_BORDER_WIDTH; i++)
-                WriteToBuffer(i, footerY + 2, controlsLine[i], ConsoleColor.Gray);
-            // Footer border dưới
-            for (int i = 0; i < MENU_BORDER_WIDTH; i++)
-                WriteToBuffer(i, footerY + 3, '═', ConsoleColor.Cyan);
+            int footerY = TOTAL_DISPLAY_HEIGHT - FOOTER_HEIGHT; // Bắt đầu footer từ vị trí chính xác
+
+            // === KHUNG ĐIỂM SỐ ===
+            // Viền trên khung điểm số
+            WriteToBuffer(0, footerY, '╔', ConsoleColor.Yellow);
+            for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY, '═', ConsoleColor.Yellow);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY, '╗', ConsoleColor.Yellow);
+
+            // Nội dung điểm số
+            WriteToBuffer(0, footerY + 1, '║', ConsoleColor.Yellow);
+            string scoreLine = $" ĐIỂM SỐ: Player 1: {player1State.Score} {(player1State.GameOver ? "(THUA)" : "")} | Player 2: {player2State.Score} {(player2State.GameOver ? "(THUA)" : "")}";
+            for (int i = 0; i < scoreLine.Length && i < MENU_BORDER_WIDTH - 2; i++)
+                WriteToBuffer(i + 1, footerY + 1, scoreLine[i], ConsoleColor.White);
+            for (int i = scoreLine.Length + 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY + 1, ' ', ConsoleColor.White);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY + 1, '║', ConsoleColor.Yellow);
+
+            // Viền dưới khung điểm số / viền trên khung hướng dẫn
+            WriteToBuffer(0, footerY + 2, '╠', ConsoleColor.Cyan);
+            for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY + 2, '═', ConsoleColor.Cyan);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY + 2, '╣', ConsoleColor.Cyan);
+
+            // === KHUNG HƯỚNG DẪN ===
+            // Nội dung hướng dẫn
+            WriteToBuffer(0, footerY + 3, '║', ConsoleColor.Cyan);
+            string controlsLine_1 = " ĐIỀU KHIỂN: [W] Player 1 bay | [↑] Player 2 bay";
+            string controlsLine_2 = " PHÍM LỆNH : [ESC] Thoát | [SPACE] Bắt đầu/Chơi lại";
+            for (int i = 0; i < controlsLine_1.Length && i < MENU_BORDER_WIDTH - 2; i++)
+                WriteToBuffer(i + 1, footerY + 3, controlsLine_1[i], ConsoleColor.Gray);
+            for (int i = controlsLine_1.Length + 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY + 3, ' ', ConsoleColor.Gray);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY + 3, '║', ConsoleColor.Cyan);
+
+            // Line 2 hướng dẫn
+            WriteToBuffer(0, footerY + 4, '║', ConsoleColor.Cyan);
+            for (int i = 0; i < controlsLine_2.Length && i < MENU_BORDER_WIDTH - 2; i++)
+                WriteToBuffer(i + 1, footerY + 4, controlsLine_2[i], ConsoleColor.Gray);
+            for (int i = controlsLine_2.Length + 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY + 4, ' ', ConsoleColor.Gray);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY + 4, '║', ConsoleColor.Cyan);
+
+            // Viền dưới khung hướng dẫn
+            WriteToBuffer(0, footerY + 5, '╚', ConsoleColor.Cyan);
+            for (int i = 1; i < MENU_BORDER_WIDTH - 1; i++)
+                WriteToBuffer(i, footerY + 5, '═', ConsoleColor.Cyan);
+            WriteToBuffer(MENU_BORDER_WIDTH - 1, footerY + 5, '╝', ConsoleColor.Cyan);
         }
 
         /// <summary>
@@ -390,13 +424,13 @@ namespace FlappyBird.Game.Modes
                     WriteToBuffer(x, y, ' ', ConsoleColor.White);
                 }
             }
-            
+
             // Menu border
             int menuStartX = 15;
             int menuStartY = 8;
             int menuWidth = 36;
             int menuHeight = 8;
-            
+
             // Draw border
             WriteToBuffer(menuStartX, menuStartY, '╔', ConsoleColor.White);
             for (int i = 1; i < menuWidth - 1; i++)
@@ -404,7 +438,7 @@ namespace FlappyBird.Game.Modes
                 WriteToBuffer(menuStartX + i, menuStartY, '═', ConsoleColor.White);
             }
             WriteToBuffer(menuStartX + menuWidth - 1, menuStartY, '╗', ConsoleColor.White);
-            
+
             // Menu content
             string[] menuLines = [
                 "",
@@ -416,34 +450,34 @@ namespace FlappyBird.Game.Modes
                 "    Choi lai",
                 "    Ve menu chinh"
             ];
-            
+
             for (int line = 0; line < menuLines.Length && line < menuHeight - 2; line++)
             {
                 WriteToBuffer(menuStartX, menuStartY + 1 + line, '║', ConsoleColor.White);
-                
+
                 string text = menuLines[line];
                 if (line == 6 || line == 7) // Menu options
                 {
-                    bool isSelected = (line == 6 && gameOverSelectedIndex == 0) || 
+                    bool isSelected = (line == 6 && gameOverSelectedIndex == 0) ||
                                      (line == 7 && gameOverSelectedIndex == 1);
                     ConsoleColor textColor = isSelected ? ConsoleColor.Black : ConsoleColor.White;
                     ConsoleColor bgColor = isSelected ? ConsoleColor.White : ConsoleColor.Black;
-                    
+
                     // For simplicity in buffer, use different characters for selection
                     if (isSelected)
                     {
                         text = ">>> " + text.Trim() + " <<<";
                     }
                 }
-                
+
                 for (int i = 0; i < text.Length && i < menuWidth - 2; i++)
                 {
                     WriteToBuffer(menuStartX + 1 + i, menuStartY + 1 + line, text[i], ConsoleColor.White);
                 }
-                
+
                 WriteToBuffer(menuStartX + menuWidth - 1, menuStartY + 1 + line, '║', ConsoleColor.White);
             }
-            
+
             // Bottom border
             WriteToBuffer(menuStartX, menuStartY + menuHeight - 1, '╚', ConsoleColor.White);
             for (int i = 1; i < menuWidth - 1; i++)
@@ -463,7 +497,7 @@ namespace FlappyBird.Game.Modes
                 DrawSinglePipeIntoBuffer(buffer, pipe);
             }
         }
-        
+
         /// <summary>
         /// Vẽ một pipe vào buffer - logic từ GameRenderer 
         /// </summary>
@@ -472,11 +506,11 @@ namespace FlappyBird.Game.Modes
             // Scale pipe position cho display nhỏ hơn
             float scaleX = (float)(GameState.GameWidth - 2) / GameState.GameWidth;
             float scaleY = (float)GAME_DISPLAY_HEIGHT / GameState.GameHeight;
-            
+
             int scaledPipeX = (int)(pipe.X * scaleX);
             int scaledTopHeight = (int)(pipe.TopHeight * scaleY);
             int scaledBottomHeight = (int)(pipe.BottomHeight * scaleY);
-            
+
             // Vẽ pipe trên
             for (int y = 0; y <= scaledTopHeight && y < GAME_DISPLAY_HEIGHT; y++)
             {
@@ -489,7 +523,7 @@ namespace FlappyBird.Game.Modes
                     }
                 }
             }
-            
+
             // Vẽ pipe dưới
             for (int y = GAME_DISPLAY_HEIGHT - scaledBottomHeight; y < GAME_DISPLAY_HEIGHT; y++)
             {
@@ -506,7 +540,7 @@ namespace FlappyBird.Game.Modes
                 }
             }
         }
-        
+
         /// <summary>
         /// Vẽ bird vào buffer - logic từ GameRenderer với animation tương tự SinglePlayerGameMode
         /// </summary>
@@ -515,11 +549,11 @@ namespace FlappyBird.Game.Modes
             // Scale bird position cho display nhỏ hơn
             float scaleX = (float)(GameState.GameWidth - 2) / GameState.GameWidth;
             float scaleY = (float)GAME_DISPLAY_HEIGHT / GameState.GameHeight;
-            
+
             int scaledBirdX = (int)(GameState.BirdX * scaleX);
             int scaledBirdY = (int)(playerState.BirdY * scaleY);
-            
-            if (scaledBirdX >= 0 && scaledBirdX < GameState.GameWidth - 2 && 
+
+            if (scaledBirdX >= 0 && scaledBirdX < GameState.GameWidth - 2 &&
                 scaledBirdY >= 0 && scaledBirdY < GAME_DISPLAY_HEIGHT)
             {
                 // Animation cho chim - dựa vào frame counter như SinglePlayerGameMode
@@ -527,7 +561,7 @@ namespace FlappyBird.Game.Modes
                 buffer[scaledBirdY, scaledBirdX] = birdChar;
             }
         }
-        
+
         /// <summary>
         /// Lấy ký tự bird với animation - tương tự SinglePlayerGameMode
         /// </summary>
@@ -535,7 +569,7 @@ namespace FlappyBird.Game.Modes
         {
             // Hiệu ứng "cánh chim" theo frame
             bool wingUp = (frameCounter / 3) % 2 == 0;
-            
+
             // Thay đổi hình dạng theo vận tốc (hướng bay)
             if (velocity < -2) // Bay lên nhanh
             {
@@ -550,7 +584,7 @@ namespace FlappyBird.Game.Modes
                 return wingUp ? 'o' : '°';
             }
         }
-        
+
         /// <summary>
         /// Set màu cho ký tự - tương tự GameRenderer
         /// </summary>
@@ -571,11 +605,11 @@ namespace FlappyBird.Game.Modes
         private string CenterText(string text, int width)
         {
             if (text.Length >= width) return text.Substring(0, width);
-            
+
             int padding = (width - text.Length) / 2;
             return new string(' ', padding) + text + new string(' ', width - text.Length - padding);
         }
-        
+
         public override void HandleInput(ConsoleKeyInfo keyInfo)
         {
             // Xử lý input cho game over menu (chỉ sau khi delay) - như SinglePlayerGameMode
@@ -588,11 +622,11 @@ namespace FlappyBird.Game.Modes
                 }
                 return;
             }
-            
+
             // Nếu đang đếm ngược thì không nhận input khác
             if (isCountingDown)
                 return;
-            
+
             switch (keyInfo.Key)
             {
                 case ConsoleKey.Spacebar:
@@ -620,7 +654,7 @@ namespace FlappyBird.Game.Modes
                     break;
             }
         }
-        
+
         /// <summary>
         /// Xử lý input cho game over menu - tương tự SinglePlayerGameMode
         /// </summary>
@@ -631,11 +665,11 @@ namespace FlappyBird.Game.Modes
                 case ConsoleKey.UpArrow:
                     gameOverSelectedIndex = gameOverSelectedIndex > 0 ? gameOverSelectedIndex - 1 : gameOverOptions.Length - 1;
                     break;
-                    
+
                 case ConsoleKey.DownArrow:
                     gameOverSelectedIndex = gameOverSelectedIndex < gameOverOptions.Length - 1 ? gameOverSelectedIndex + 1 : 0;
                     break;
-                    
+
                 case ConsoleKey.Enter:
                     if (gameOverSelectedIndex == 0)
                     {
@@ -648,19 +682,19 @@ namespace FlappyBird.Game.Modes
                         shouldExit = true;
                     }
                     break;
-                    
+
                 case ConsoleKey.Spacebar:
                     // Shortcut để restart nhanh
                     RestartGame();
                     break;
-                    
+
                 case ConsoleKey.Escape:
                     // Thoát
                     shouldExit = true;
                     break;
             }
         }
-        
+
         /// <summary>
         /// Restart game với cùng cài đặt - tương tự SinglePlayerGameMode
         /// </summary>
@@ -677,7 +711,7 @@ namespace FlappyBird.Game.Modes
             gameStarted = false;
             firstRender = true; // Reset để clear screen khi restart
         }
-        
+
         /// <summary>
         /// Jump method cho player - tương tự SinglePlayerGameMode
         /// </summary>
@@ -690,14 +724,14 @@ namespace FlappyBird.Game.Modes
 
             playerState.BirdVelocity = GameState.JumpStrength;
         }
-        
+
         public override bool IsGameOver()
         {
             // Game chỉ kết thúc khi người chơi chọn thoát (shouldExit = true) - như SinglePlayerGameMode
             // Không kết thúc khi cả hai player GameOver = true vì lúc đó chúng ta đang hiển thị game over menu
             return shouldExit;
         }
-        
+
         /// <summary>
         /// Check nếu cả hai player đã game over để trigger menu
         /// </summary>
@@ -705,7 +739,7 @@ namespace FlappyBird.Game.Modes
         {
             return player1State.GameOver && player2State.GameOver;
         }
-        
+
         /// <summary>
         /// Xác định người thắng
         /// </summary>
@@ -724,7 +758,7 @@ namespace FlappyBird.Game.Modes
                 return "PLAYER 2";
             else if (player2State.GameOver)
                 return "PLAYER 1";
-            
+
             return "DANG CHOI";
         }
 
