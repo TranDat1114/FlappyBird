@@ -101,9 +101,10 @@ namespace FlappyBird.UI
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
 
+            // Description
             Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("              *** CHAO MUNG DEN VOI FLAPPY BIRD GAME! ***");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("INFO: " + GetMenuDescription(selectedIndex));
             Console.ResetColor();
             Console.WriteLine();
 
@@ -154,12 +155,6 @@ namespace FlappyBird.UI
             Console.WriteLine("│    ENTER       : Chọn                                          │");
             Console.WriteLine("│    ESC         : Thoát                                         │");
             Console.WriteLine("└────────────────────────────────────────────────────────────────┘");
-            Console.ResetColor();
-
-            // Description
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("INFO: " + GetMenuDescription(selectedIndex));
             Console.ResetColor();
         }
 

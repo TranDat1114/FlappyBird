@@ -16,8 +16,8 @@ class FlappyBirdGame
         {
             try
             {
-                Console.SetWindowSize(100, 35);
-                Console.SetBufferSize(100, 35);
+                Console.SetWindowSize(100, 40);
+                Console.SetBufferSize(100, 40);
             }
             catch
             {
@@ -53,11 +53,11 @@ class FlappyBirdGame
                     break;
 
                 case MenuAction.Exit:
-                    Console.Clear();
-                    Console.SetCursorPosition(0, 10);
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("*** Cam on ban da choi Flappy Bird Game! ***");
-                    Console.WriteLine("*** Hen gap lai! ***");
+                    // Console.Clear();
+                    // Console.SetCursorPosition(0, 10);
+                    // Console.ForegroundColor = ConsoleColor.Yellow;
+                    // Console.WriteLine("*** Cam on ban da choi Flappy Bird Game! ***");
+                    // Console.WriteLine("*** Hen gap lai! ***");
                     Console.ResetColor();
                     return;
             }
